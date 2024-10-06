@@ -1,5 +1,11 @@
 import requests
 
+import json as json_lib
+
+from base64 import b64decode
+from Cryptodome.Cipher import AES
+from Cryptodome.Util.Padding import unpad
+
 # ----------------------------------------------------------------------------------------------------------------------
 #
 # HO.MOBILE CRAWLER
@@ -18,6 +24,10 @@ class ZyXEL_LTE5398_M904_Crawler:
         self._username = username
         self._password = password
         self._credit = {}
+
+        self._BasicInformation = None
+        self._RSAPublicKey = None
+
 
     @property
     def ip_address(self):
@@ -75,7 +85,75 @@ class ZyXEL_LTE5398_M904_Crawler:
 
         else:
 
-            self.info(response)
+            json_str = response.text
+
+            zyxel_json = json_lib.loads(json_str)
+
+            if zyxel_json.get("result") != "ZCFG_SUCCESS":
+
+                self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
+
+                # get html in bytes
+                self.error(str(response.content))
+
+            else:
+
+                # ----------------------------------------------------------------------------------------------------------
+                # FASE 2 - getRSAPublickKey
+                # ----------------------------------------------------------------------------------------------------------
+
+                # login url
+                url = 'http://' + self.ip_address + '/getRSAPublickKey'
+
+                # session keeping cookies
+                session = requests.Session()
+
+                response = session.get(url)
+
+                # get http status code
+                http_status_code = response.status_code
+
+                # check response is okay
+                if http_status_code != 200:
+
+                    self.error('RSA Publick Key page (' + url + ') error: ' + str(http_status_code))
+
+                    # get html in bytes
+                    self.debug(str(response.content))
+
+                else:
+
+                    json_str = response.text
+
+                    zyxel_json = json_lib.loads(json_str)
+
+                    if zyxel_json.get("result") != "ZCFG_SUCCESS":
+
+                        self.error('RSA Publick Key page (' + url + ') error: ' + str(zyxel_json))
+
+                        # get html in bytes
+                        self.error(str(response.content))
+
+                    else:
+
+                        self._BasicInformation = zyxel_json.get("RSAPublicKey")
+
+                        self.info(self._BasicInformation)
+
+                        # Dati forniti
+                        json_data = {
+                            "content": "aO lSG F2OcodRr5ysjjyEYV05bvTVgONs2kvXFR4cgVzoXn2zTAW5H1CR3UY6yTkQ9sWOaBRqMpf0eP5gfMIQLfihlu3GPY 41xUQexFs2zRFy29iBXM0eSx4 tPMPjb3FbWHMlcb0AkeTQP8/0eW4J6qvuBihzSEEFoQvh1UI: ",
+                            "key": "gD1LBXT26HN15iULyjpb14UlOwxczttx2J2G5NUS9iK7 d/2Fkj/0SRBnBsUjsRRa5O2G5u5avNx9td3bCynL1WfAlwFv2czN/tPaSyjjVVdlsQsTezyhGoIU61sYDbILhp1zb2JqLKh/UB 1/X0sW01/iC30 mlAKZnnt5OOlwk0h2Ek4uoEXbIohDv/TaruHPFzo5RyIxNC/Z78LKa0Llzo ODYY6J9IKP1e4mO43aP85YJcTsW8Jx1hQHcJX0GwUQq0E KKt yRu8ANIbYk8bc3ZiLkFg0xdcXCExGbBCZzAaudCWUd0CNac9hq9m0ncI/udLeL5Atk9FOElydw==",
+                            "iv": "QcunEA1jqanSf089gkEsunBagkBkQpEsCSoaOsTrE1M="
+                        }
+
+                        # Esegui la decrittazione
+
+                        decrypted_text = self.decrypt_data(json_data['content'], json_data['key'], json_data['iv'])
+
+                        print("Testo decifrato: " + decrypted_text)
+
+
 
             """
 
@@ -311,3 +389,22 @@ class ZyXEL_LTE5398_M904_Crawler:
                                         self.save_info(pnk, v, attributes)
             """
 
+    def add_padding(self, s):
+        while len(s) % 4 != 0:
+            s += '='
+        return s
+
+    def decrypt_data(self, content, key, iv):
+        # Decodifica Base64
+        decoded_content = b64decode(self.add_padding(content))
+        decoded_key = b64decode(self.add_padding(key))
+        decoded_iv = b64decode(self.add_padding(iv))
+
+        # Crea il cifratore AES in modalità CBC con la chiave e il vettore di inizializzazione (IV)
+        cipher = AES.new(decoded_key, AES.MODE_CBC, decoded_iv)
+
+        # Decritta e rimuovi il padding PKCS7
+        decrypted = unpad(cipher.decrypt(decoded_content), AES.block_size)
+
+        # Converti il risultato in stringa UTF-8
+        return decrypted.decode('utf-8')
