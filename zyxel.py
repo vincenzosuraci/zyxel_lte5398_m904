@@ -68,7 +68,9 @@ class ZyXEL_LTE5398_M904_Crawler:
     def get_data(self):
 
         # --------------------------------------------------------------------------------------------------------------
+        #
         # FASE 1 - getBasicInformation
+        #
         # --------------------------------------------------------------------------------------------------------------
 
         # login url
@@ -90,185 +92,209 @@ class ZyXEL_LTE5398_M904_Crawler:
             # get html in bytes
             self.debug(str(response.content))
 
+            pass
+
+        json_str = response.text
+
+        zyxel_json = json_lib.loads(json_str)
+
+        # check response is successful
+        if zyxel_json.get("result") != "ZCFG_SUCCESS":
+
+            self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
+
+            # get html in bytes
+            self.error(str(response.content))
+
+            pass
+
+        # ------------------------------------------------------------------------------------------------------
+        #
+        # FASE 2 - getRSAPublickKey
+        #
+        # ------------------------------------------------------------------------------------------------------
+
+        # login url
+        url = 'http://' + self.ip_address + '/getRSAPublickKey'
+
+        response = session.get(url)
+
+        # get http status code
+        http_status_code = response.status_code
+
+        # check response is okay
+        if http_status_code != 200:
+
+            self.error('RSA Publick Key page (' + url + ') error: ' + str(http_status_code))
+
+            # get html in bytes
+            self.debug(str(response.content))
+
+            pass
+
+        json_str = response.text
+
+        zyxel_json = json_lib.loads(json_str)
+
+        if zyxel_json.get("result") != "ZCFG_SUCCESS":
+
+            self.error('RSA Publick Key page (' + url + ') error: ' + str(zyxel_json))
+
+            # get html in bytes
+            self.error(str(response.content))
+
+            pass
+
+        self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
+
+        # --------------------------------------------------------------------------------------------------------------
+        #
+        # FASE 3 - UserLogin
+        #
+        # --------------------------------------------------------------------------------------------------------------
+
+        # login url
+        url = 'http://' + self.ip_address + '/UserLogin'
+
+        data = self.get_content_key_iv(
+            dynamic=False
+        );
+
+        # Definizione degli headers personalizzati
+        headers = {
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
+            'Origin': 'http://' + self.ip_address,
+            'Pragma': 'no-cache',
+            'Referer': 'http://' + self.ip_address + '/login',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+
+        response = session.post(
+            url,
+            json=data,
+            headers=headers,
+            verify=False
+        )
+
+
+        # get http status code
+        http_status_code = response.status_code
+
+        # check response is okay
+        if http_status_code != 200:
+
+            self.error('User login page (' + url + ') error: ' + str(http_status_code))
+
+            # get html in bytes
+            self.debug(str(response.content))
+
+            pass
+
+        json_str = response.text
+
+        zyxel_json = json_lib.loads(json_str)
+
+        self.info(zyxel_json)
+
+        # --------------------------------------------------------------------------------------------------------------
+        #
+        # FASE 5 - Cell Status
+        #
+        # --------------------------------------------------------------------------------------------------------------
+
+        url = "http://" + self.ip_address + "/cgi-bin/DAL?oid=cellwan_status"
+
+        headers = {
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Pragma': 'no-cache',
+            'Referer': 'http://' + self.ip_address + '/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+
+        # Effettua la richiesta GET
+        response = session.get(url, headers=headers, verify=False)
+
+        # get http status code
+        http_status_code = response.status_code
+
+        # check response is okay
+        if http_status_code != 200:
+            self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
+
+            # get html in bytes
+            self.debug(str(response.content))
+
+            pass
+
+        json_str = response.text
+
+        zyxel_json = json_lib.loads(json_str)
+
+        iv = zyxel_json.get("iv")
+        encrypted_data = zyxel_json.get("content")
+
+        # Decodifica la stringa Base64
+        aes_key_decoded_bytes = base64.b64decode(base64_encoded_aes_key)
+
+        # Converte i byte in una stringa
+        aes_key = aes_key_decoded_bytes.decode('utf-8', errors='ignore')
+
+        data = self.dxc(encrypted_data, aes_key, iv)
+
+        self.info(data)
+
+    def get_content_key_iv(self, dynamic=False):
+
+        data = None
+
+        if dynamic:
+
+            # Converte la password in bytes
+            password_bytes = self.password.encode('utf-8')
+
+            # Codifica la password (in bytes) in base64
+            password_base64_bytes = base64.b64encode(password_bytes)
+
+            # Converte il risultato da bytes a stringa
+            base64_password = password_base64_bytes.decode('utf-8')
+
+            s = {
+                "Input_Account": self.username,
+                "Input_Passwd": base64_password,
+                "currLang": "en",
+                "RememberPassword": 0,
+                "SHA512_password": False
+            }
+
+            # Recupero dei dati DINAMICO
+            data = self.aes_rsa_encrypt(
+                json.dumps(s),
+                self._RSAPublicKey
+            )
+
         else:
 
-            json_str = response.text
+            # Recupero dei dati STATICO
+            base64_encoded_aes_key = 'TIuhVauTJSF/G1qwx/u60pUgivXZuypgcuAUJNckx8jlFkd+08COrNK5Z4zVi48F35tpMGI7PJp8XO+AN4hqjpkpR7LQMeH9JjyAaGl7lgEf3HLYkZydOUNq3Ft9CbPqJZHvReGRguTt7xOgONvpU1EX8nYRe/5wxIYenO3DJEh+3rVxGzzAtHxOBJCaS2h1s/es/eAxhH8bDs+dvrgeKHeU1KDs/WkHe+drQItiWm1YVap5bXyQ8y1SHdUK2uXX5Bo/iEd9JjyVmOjZC9cjivzxp4YthpPxwIWJuPMgHcBTuYVsBP8CtQLBjFsAfMhRpf68RpUtAMTbqVSKkisFlA=='
 
-            zyxel_json = json_lib.loads(json_str)
+            data = {
+                'content': 'FsSSrmypE+/oxm/j3rr3I5gG4ytDh266seRU8Ix5K/3jm0eOS4Fom4peK1J0x0aDbjHd0f0BWa0d6XXcqurJWuzzFfUUwuTlFr59gZD5P5GwKLbSX2C0fpx+7MMFUWfaiZBbLUYcS2kbR1Qt3TS65Scnshel3C7wXqHwO39qPFA=',
+                'key': base64_encoded_aes_key,
+                'iv': '4wxpWNR2txl1FcyE9pn+r/4b5PtCyuqUIGhrOfdQzys='
+            }
 
-            if zyxel_json.get("result") != "ZCFG_SUCCESS":
+        return data
 
-                self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
-
-                # get html in bytes
-                self.error(str(response.content))
-
-            else:
-
-                # ------------------------------------------------------------------------------------------------------
-                # FASE 2 - getRSAPublickKey
-                # ------------------------------------------------------------------------------------------------------
-
-                # login url
-                url = 'http://' + self.ip_address + '/getRSAPublickKey'
-
-                response = session.get(url)
-
-                # get http status code
-                http_status_code = response.status_code
-
-                # check response is okay
-                if http_status_code != 200:
-
-                    self.error('RSA Publick Key page (' + url + ') error: ' + str(http_status_code))
-
-                    # get html in bytes
-                    self.debug(str(response.content))
-
-                else:
-
-                    json_str = response.text
-
-                    zyxel_json = json_lib.loads(json_str)
-
-                    if zyxel_json.get("result") != "ZCFG_SUCCESS":
-
-                        self.error('RSA Publick Key page (' + url + ') error: ' + str(zyxel_json))
-
-                        # get html in bytes
-                        self.error(str(response.content))
-
-                    else:
-
-                        self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
-
-                        # ----------------------------------------------------------------------------------------------
-                        # FASE 3 - UserLogin
-                        # ----------------------------------------------------------------------------------------------
-
-                        # login url
-                        url = 'http://' + self.ip_address + '/UserLogin'
-
-                        # Converte la password in bytes
-                        password_bytes = self.password.encode('utf-8')
-
-                        # Codifica la password (in bytes) in base64
-                        password_base64_bytes = base64.b64encode(password_bytes)
-
-                        # Converte il risultato da bytes a stringa
-                        base64_password = password_base64_bytes.decode('utf-8')
-
-                        s = {
-                            "Input_Account": self.username,
-                            "Input_Passwd": base64_password,
-                            "currLang": "en",
-                            "RememberPassword": 0,
-                            "SHA512_password": False
-                        }
-
-
-                        data = self.aes_rsa_encrypt(
-                            json.dumps(s),
-                            self._RSAPublicKey
-                        )
-
-                        base64_encoded_aes_key = 'TIuhVauTJSF/G1qwx/u60pUgivXZuypgcuAUJNckx8jlFkd+08COrNK5Z4zVi48F35tpMGI7PJp8XO+AN4hqjpkpR7LQMeH9JjyAaGl7lgEf3HLYkZydOUNq3Ft9CbPqJZHvReGRguTt7xOgONvpU1EX8nYRe/5wxIYenO3DJEh+3rVxGzzAtHxOBJCaS2h1s/es/eAxhH8bDs+dvrgeKHeU1KDs/WkHe+drQItiWm1YVap5bXyQ8y1SHdUK2uXX5Bo/iEd9JjyVmOjZC9cjivzxp4YthpPxwIWJuPMgHcBTuYVsBP8CtQLBjFsAfMhRpf68RpUtAMTbqVSKkisFlA=='
-
-                        data = {
-                            'content': 'FsSSrmypE+/oxm/j3rr3I5gG4ytDh266seRU8Ix5K/3jm0eOS4Fom4peK1J0x0aDbjHd0f0BWa0d6XXcqurJWuzzFfUUwuTlFr59gZD5P5GwKLbSX2C0fpx+7MMFUWfaiZBbLUYcS2kbR1Qt3TS65Scnshel3C7wXqHwO39qPFA=',
-                            'key': base64_encoded_aes_key,
-                            'iv': '4wxpWNR2txl1FcyE9pn+r/4b5PtCyuqUIGhrOfdQzys='
-                        }
-
-                        # Definizione degli headers personalizzati
-                        headers = {
-                            'Accept': 'application/json, text/javascript, */*; q=0.01',
-                            'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-                            'Cache-Control': 'no-cache',
-                            'Connection': 'keep-alive',
-                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                            'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
-                            'Origin': 'http://' + self.ip_address,
-                            'Pragma': 'no-cache',
-                            'Referer': 'http://' + self.ip_address + '/login',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        }
-
-                        response = session.post(
-                            url,
-                            json=data,
-                            headers=headers,
-                            verify=False
-                        )
-
-
-                        # get http status code
-                        http_status_code = response.status_code
-
-                        # check response is okay
-                        if http_status_code != 200:
-
-                            self.error('User login page (' + url + ') error: ' + str(http_status_code))
-
-                            # get html in bytes
-                            self.debug(str(response.content))
-
-                        else:
-
-                            json_str = response.text
-
-                            zyxel_json = json_lib.loads(json_str)
-
-                            self.info(zyxel_json)
-
-                            # ------------------------------------------------------------------------------------------
-                            # FASE 4 - Cell Status
-                            # ------------------------------------------------------------------------------------------
-
-                            url = "http://" + self.ip_address + "/cgi-bin/DAL?oid=cellwan_status"
-                            headers = {
-                                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-                                'Cache-Control': 'no-cache',
-                                'Connection': 'keep-alive',
-                                'Pragma': 'no-cache',
-                                'Referer': 'http://' + self.ip_address + '/',
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-                                'X-Requested-With': 'XMLHttpRequest',
-                            }
-
-                            # Effettua la richiesta GET
-                            response = session.get(url, headers=headers, verify=False)
-
-                            # get http status code
-                            http_status_code = response.status_code
-
-                            # check response is okay
-                            if http_status_code != 200:
-                                self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
-
-                                # get html in bytes
-                                self.debug(str(response.content))
-
-                            else:
-
-                                json_str = response.text
-
-                                zyxel_json = json_lib.loads(json_str)
-
-                                iv = zyxel_json.get("iv")
-                                encrypted_data = zyxel_json.get("content")
-
-                                # Decodifica la stringa Base64
-                                aes_key_decoded_bytes = base64.b64decode(base64_encoded_aes_key)
-
-                                # Converte i byte in una stringa
-                                aes_key = aes_key_decoded_bytes.decode('utf-8', errors='ignore')
-
-                                data = self.dxc(encrypted_data, aes_key, iv)
-
-                                self.info(data)
 
     def dxc(self, encrypted_data, aes_key, iv):
         # Decodifica le stringhe in Base64
