@@ -8,9 +8,8 @@ from zyxel import ZyXEL_LTE5398_M904_Crawler
 
 if __name__ == "__main__":
 
-
     # ------------------------------------------------------------------------------------------------------------------
-    # Ho.Mobile
+    # ZyXEL LTE5398 M904
     # ------------------------------------------------------------------------------------------------------------------
 
     ip_address = "192.168.0.1"
@@ -20,8 +19,10 @@ if __name__ == "__main__":
     zyxel = ZyXEL_LTE5398_M904_Crawler(
         ip_address=ip_address,
         username=username,
-        password=password
+        password=password,
+        dynamic=False
     )
 
+    #zyxel.test_aes_rsa_encrypt()
     zyxel.get_data()
 
