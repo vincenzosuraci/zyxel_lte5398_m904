@@ -1,6 +1,6 @@
 {
-  "domain": "zyxel_lte5398_m904_crawler",
-  "name": "ZyXEL LTE5398-M904 Crawler",
+  "domain": "zyxel_lte5398_m904",
+  "name": "ZyXEL LTE5398-M904",
   "version": "1.0.0",
   "homeassistant": "2024.8.0",
   "documentation": "https://github.com/vincenzosuraci/hass_zyxel_lte5398_m904",

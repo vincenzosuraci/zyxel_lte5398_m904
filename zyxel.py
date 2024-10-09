@@ -8,7 +8,7 @@ import os
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import AES
-from Cryptodome.Cipher import PKCS1_OAEP
+from Cryptodome.Cipher import PKCS1_OAEP, PKCS1_v1_5
 from Cryptodome.Util.Padding import pad, unpad
 
 import json
@@ -21,30 +21,21 @@ import json
 
 class ZyXEL_LTE5398_M904_Crawler:
 
-    # Per ottenere questi dati:
-    # 1) accedere alla pagina di login del router ZyXEL e attivare l'ispezione del codice
-    # 2) eseguire il login e cercare in "network" una pagina chiamata "UserLogin"
-    # 3) aprire il tab "Payload" e cliccare su "view source"
-    # 4) copiare i dati e incollarli in basso
-    CONTENT = 'Iwb47Odxd5B2pNHeWa7bR3M03R6/RPNFwjZ/8PqDtht6N7hlNIzm3GZbwi3MAkfeKKvyxUAstbfO50sjqCJ+6tt61TSLPwa5s3dAEY6PDMCHnyqpFW6IpwzyHqig65Vfw1CqYjrK4HUAgqtM4hqF9ZMgl35D6aYNsCGYSypptXQ='
-    KEY = 'Cy8Xo9UL9L1cIpfZ7cHbP0+VvCkjm2C/ij66DEvZxvpG4v1xBaCIFCsN6wLcwXZMegySFIhGVMPl+KqXiIxEEDRbZrzuxxW83fJmHLHm8uQXvsV2UHm9ErDblxiM8UspGL7WY3FgJjAwNmcdgSlTo/b4SKtZfKIxYimwIna8eniyDZ2jbmrvBOLrGoNh3pohYju9UtJgUg3RNT2l67H+jsm/QhV/MTXTp03FhMjEgmjJ2ByyWy+KjmNqwbaWz9nKR4MZZdGSngXs4ad+pkJY8QdQ1ESKFOMtWdU2lzgqB1ZuXVhoXcLub+B5hZm4pSlzOYlEKM4L3WNfed6eBWcqzw=='
-    IV = 'Es8+IC4u2QnhRX27bbdPReuo8s4i0wVJnDeCqjTULxQ='
-
-    # Per ottenere LA AES_KEY:
-    # 1) eseguire la versione dell'hack di miononno e vedere nella console
-    AES_KEY = '490qltHlIA0iXoYgsHKqhyyq931dgM2CU+WIRcf3X5M='
+    MAX_NUM_RETRIES = 1
 
     def __init__(
         self,
-        ip_address,
-        username,
-        password,
-        dynamic = False
+        params = {}
     ):
-        self._ip_address = ip_address
-        self._username = username
-        self._password = password
-        self._dynamic = dynamic
+        self._ip_address = params.get("ip_address", None)
+        self._content = params.get("content", None)
+        self._key = params.get("key", None)
+        self._iv = params.get("iv", None)
+        self._aes_key = params.get("aes_key", None)
+
+        self._dynamic = params.get("dynamic", False)
+        self._username = params.get("username", None)
+        self._password = params.get("password", None)
 
         self._BasicInformation = None
         self._RSAPublicKey = None
@@ -66,8 +57,20 @@ class ZyXEL_LTE5398_M904_Crawler:
         return self._password
 
     @property
-    def credit(self):
-        return self._credit
+    def content(self):
+        return self._content
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def iv(self):
+        return self._iv
+
+    @property
+    def aes_key(self):
+        return self._aes_key
 
     @property
     def dynamic(self):
@@ -96,7 +99,91 @@ class ZyXEL_LTE5398_M904_Crawler:
             self._session = requests.Session()
         return self.session
 
-    def get_data(self):
+    def update_cell_status_data(self):
+
+        cell_status_dict = {}
+
+        # Recuperiamo i dati presenti nella chiave "Object"
+        cell_status_data = self.get_cell_status_data()
+        cell_status_data_object = cell_status_data.get("Object")
+
+        if cell_status_data_object is not None:
+            cell_status = cell_status_data_object[0]
+            if cell_status is not None:
+
+                # self.info(str(cell_status))
+
+                # RSRP
+                cell_status_dict["RSRP"] = {
+                    "value": int(cell_status["INTF_RSRP"]),
+                    "icon": "mdi:signal",
+                    "uom": "dB"
+                }
+                # RSRQ
+                cell_status_dict["RSRQ"] = {
+                    "value": int(cell_status["INTF_RSRQ"]),
+                    "icon": "mdi:signal",
+                    "uom": "dB"
+                }
+                # SINR
+                cell_status_dict["SINR"] = {
+                    "value": int(cell_status["INTF_SINR"]),
+                    "icon": "mdi:signal",
+                    "uom": "dB"
+                }
+
+                # Access_Technology
+                cell_status_dict["Access_Technology"] = {
+                    "value": cell_status["INTF_Current_Access_Technology"],
+                    "icon": "mdi:signal"
+                }
+
+                # Cell ID
+                cell_status_dict["Cell_ID"] = {
+                    "value": int(cell_status["INTF_Cell_ID"]),
+                    "icon": "mdi:radio-tower"
+                }
+                # PhyCell_ID
+                cell_status_dict["PhyCell_ID"] = {
+                    "value": int(cell_status["INTF_PhyCell_ID"]),
+                    "icon": "mdi:radio-tower"
+                }
+                # eNodeB
+                cell_status_dict["eNodeB"] = {
+                    "value": cell_status["INTF_Cell_ID"] // 256,
+                    "icon": "mdi:radio-tower"
+                }
+
+                # Main Band
+                ul = 5 * ( int(cell_status["INTF_Uplink_Bandwidth"]) - 1 )
+                dl = 5 * (int(cell_status["INTF_Downlink_Bandwidth"]) - 1)
+                cell_status_dict["Main_Band"] = {
+                    "value": cell_status["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)" ,
+                    "icon": "mdi:radio-tower"
+                }
+
+                # Carrier Aggregated Bands
+                CA_Bands = ""
+                for scc in cell_status["SCC_Info"]:
+                    if scc["Enable"]:
+                        CA_Bands += scc["Band"] + " "
+                cell_status_dict["CA_Bands"] = {
+                    "value": CA_Bands,
+                    "icon": "mdi:radio-tower"
+                }
+
+        for k, v in cell_status_dict.items():
+            if v["value"] is not None:
+                self.info(k + ': ' + str(v["value"]))
+                attributes = {
+                    "icon": v.get("icon"),
+                    "unit_of_measurement": v.get("uom")
+                }
+                self.save_info(k, v, attributes)
+
+
+
+    def get_cell_status_data(self):
 
         # --------------------------------------------------------------------------------------------------------------
         #
@@ -118,26 +205,17 @@ class ZyXEL_LTE5398_M904_Crawler:
 
         # --------------------------------------------------------------------------------------------------------------
         #
-        # FASE 3 - UserLogin
+        # FASE 3 - Cell Status
         #
         # --------------------------------------------------------------------------------------------------------------
 
-        if self.getUserLogin() is None:
-            return None
-
-        # --------------------------------------------------------------------------------------------------------------
-        #
-        # FASE 4 - Cell Status
-        #
-        # --------------------------------------------------------------------------------------------------------------
-
-        if self.getCellStatus() is None:
-            return None
-
-        self.info(self._CellStatus)
+        return self.getCellStatus()
 
 
-    def getCellStatus(self):
+    def getCellStatus(self, num_retries=MAX_NUM_RETRIES):
+
+        if self._UserLogin is None:
+            self.getUserLogin()
 
         url = "http://" + self.ip_address + "/cgi-bin/DAL?oid=cellwan_status"
 
@@ -156,28 +234,45 @@ class ZyXEL_LTE5398_M904_Crawler:
         }
 
         # Effettua la richiesta GET
-        response = session.get(url, headers=headers, verify=False)
+        response = session.get(
+            url,
+            headers=headers,
+            verify=False
+        )
 
         # get http status code
         http_status_code = response.status_code
 
         # check response is okay
         if http_status_code != 200:
-            self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
-
-            # get html in bytes
-            self.debug(str(response.content))
-
-            return None
+            if num_retries > 0:
+                self._UserLogin = None
+                return self.getCellStatus(num_retries-1)
+            else:
+                self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
+                # get html in bytes
+                self.debug(str(response.content))
+                return None
 
         json_str = response.text
 
         zyxel_json = json_lib.loads(json_str)
 
-        iv = zyxel_json.get("iv")
-        encrypted_data = zyxel_json.get("content")
+        decoded_zyxel_str = self.dxc(
+            zyxel_json.get("content"),
+            self.aes_key,
+            zyxel_json.get("iv")
+        )
 
-        self._CellStatus = self.dxc(encrypted_data, self.AES_KEY, iv)
+        decoded_zyxel_json = json_lib.loads(decoded_zyxel_str )
+
+        if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
+            self.error('Cell Status page (' + url + ') error: ' + str(zyxel_json))
+            # get html in bytes
+            self.error(str(response.content))
+            return None
+
+        self._CellStatus = decoded_zyxel_json
 
         return self._CellStatus
 
@@ -190,9 +285,7 @@ class ZyXEL_LTE5398_M904_Crawler:
         session = self.get_session()
 
         # Recupero dei dati
-        data = self.get_content_key_iv(
-            dynamic=self.dynamic
-        )
+        data = self.get_content_key_iv()
 
         # Definizione degli headers personalizzati
         headers = {
@@ -221,12 +314,9 @@ class ZyXEL_LTE5398_M904_Crawler:
 
         # check response is okay
         if http_status_code != 200:
-
             self.error('User login page (' + url + ') error: ' + str(http_status_code))
-
             # get html in bytes
             self.debug(str(response.content))
-
             return None
 
         json_str = response.text
@@ -237,80 +327,80 @@ class ZyXEL_LTE5398_M904_Crawler:
 
     def getBasicInformation(self):
 
-        # login url
-        url = 'http://' + self.ip_address + '/getBasicInformation'
+        if self._BasicInformation is None:
 
-        # session keeping cookies
-        session = self.get_session()
+            # login url
+            url = 'http://' + self.ip_address + '/getBasicInformation'
 
-        response = session.get(url)
+            # session keeping cookies
+            session = self.get_session()
 
-        # get http status code
-        http_status_code = response.status_code
+            response = session.get(url)
 
-        # check response is okay
-        if http_status_code != 200:
-            self.error('basic information page (' + url + ') error: ' + str(http_status_code))
+            # get http status code
+            http_status_code = response.status_code
 
-            # get html in bytes
-            self.debug(str(response.content))
+            # check response is okay
+            if http_status_code != 200:
+                self.error('basic information page (' + url + ') error: ' + str(http_status_code))
+                # get html in bytes
+                self.debug(str(response.content))
+                return None
 
-            return None
+            json_str = response.text
 
-        json_str = response.text
+            zyxel_json = json_lib.loads(json_str)
 
-        zyxel_json = json_lib.loads(json_str)
+            # check response is successful
+            if zyxel_json.get("result") != "ZCFG_SUCCESS":
+                self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
+                # get html in bytes
+                self.error(str(response.content))
+                return None
 
-        # check response is successful
-        if zyxel_json.get("result") != "ZCFG_SUCCESS":
-            self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
-            # get html in bytes
-            self.error(str(response.content))
-            return None
-
-        self._BasicInformation = zyxel_json
+            self._BasicInformation = zyxel_json
 
         return self._BasicInformation
 
     def getRSAPublickKey(self):
 
-        session = self.get_session()
+        if self._RSAPublicKey is None:
 
-        # login url
-        url = 'http://' + self.ip_address + '/getRSAPublickKey'
+            session = self.get_session()
 
-        response = session.get(url)
+            # login url
+            url = 'http://' + self.ip_address + '/getRSAPublickKey'
 
-        # get http status code
-        http_status_code = response.status_code
+            response = session.get(url)
 
-        # check response is okay
-        if http_status_code != 200:
-            self.error('RSA Publick Key page (' + url + ') error: ' + str(http_status_code))
+            # get http status code
+            http_status_code = response.status_code
 
-            # get html in bytes
-            self.debug(str(response.content))
+            # check response is okay
+            if http_status_code != 200:
+                self.error('RSA Publick Key page (' + url + ') error: ' + str(http_status_code))
+                # get html in bytes
+                self.debug(str(response.content))
+                return None
 
-            return None
+            json_str = response.text
 
-        json_str = response.text
+            zyxel_json = json_lib.loads(json_str)
 
-        zyxel_json = json_lib.loads(json_str)
+            if zyxel_json.get("result") != "ZCFG_SUCCESS":
+                self.error('RSA Public Key page (' + url + ') error: ' + str(zyxel_json))
+                # get html in bytes
+                self.error(str(response.content))
+                return None
 
-        if zyxel_json.get("result") != "ZCFG_SUCCESS":
-            self.error('RSA Public Key page (' + url + ') error: ' + str(zyxel_json))
-
-            # get html in bytes
-            self.error(str(response.content))
-
-            return None
-
-        self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
+            self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
 
         return self._RSAPublicKey
 
 
-    def get_content_key_iv(self, dynamic=False, args={}):
+    def get_content_key_iv(self, args={}):
+
+        dynamic = args.get("dynamic", self._dynamic)
 
         if dynamic:
 
@@ -341,9 +431,9 @@ class ZyXEL_LTE5398_M904_Crawler:
         else:
 
             data = {
-                'content': self.CONTENT,
-                'key': self.KEY,
-                'iv': self.IV
+                'content': self.content,
+                'key': self.key,
+                'iv': self.iv
             }
 
         return data
@@ -352,20 +442,20 @@ class ZyXEL_LTE5398_M904_Crawler:
     # Con questa funzione provo a testare la bontà della funzione aes_rsa_encrypt()
     def test_aes_rsa_encrypt(self):
         static_get_content_key_iv = self.get_content_key_iv(
-            dynamic=False
+            args={ "dynamic": False }
         )
         self.getRSAPublickKey()
         args = {
-            'aes_key': base64.b64decode(self.AES_KEY),
-            'iv': base64.b64decode(self.IV)
+            'aes_key': base64.b64decode(self.aes_key),
+            'iv': base64.b64decode(self.iv)
         }
         dynamic_get_content_key_iv = self.get_content_key_iv(
             dynamic=True,
             args=args
         )
-        self.info("Static:")
+        self.info("Static (to-be):")
         self.info(static_get_content_key_iv)
-        self.info("Dynamic:")
+        self.info("Dynamic (as-is):")
         self.info(dynamic_get_content_key_iv)
 
     def dxc(
@@ -398,21 +488,25 @@ class ZyXEL_LTE5398_M904_Crawler:
     ):
 
         # Genera una chiave AES casuale
-        aes_key = args.get('aes_key', os.urandom(32))  # Chiave AES di 256 bit
-        iv = args.get('iv', os.urandom(32))  # Vettore di inizializzazione di 16 byte
+        iv32 = args.get('iv', os.urandom(32))  # Vettore di inizializzazione di 32 byte
+        iv = base64.b64encode(iv32).decode('utf-8')
 
         # Crittografia dei dati con AES
-        cipher_aes = AES.new(aes_key, AES.MODE_CBC, iv[:16])
+        aes_key = args.get('aes_key', os.urandom(32))  # Chiave AES di 32 bytes (256 bit)
+        iv16 = iv32[:16]  # Vettore di inizializzazione di 16 byte
+        cipher_aes = AES.new(aes_key, AES.MODE_CBC, iv16)
         encrypted_data = cipher_aes.encrypt(pad(data.encode('utf-8'), AES.block_size))
+        content = base64.b64encode(encrypted_data).decode('utf-8')
 
         # Crittografia della chiave AES con RSA utilizzando PKCS1_OAEP
         rsa_key = RSA.import_key(public_key)
         cipher_rsa = PKCS1_OAEP.new(rsa_key)
         encrypted_aes_key = cipher_rsa.encrypt(aes_key)
+        key = base64.b64encode(encrypted_aes_key).decode('utf-8')
 
         # Restituisce i dati cifrati e la chiave AES cifrata
         return {
-            'content': base64.b64encode(encrypted_data).decode('utf-8'),
-            'key': base64.b64encode(encrypted_aes_key).decode('utf-8'),
-            'iv': base64.b64encode(iv).decode('utf-8')
+            'content': content,
+            'key': key,
+            'iv': iv
         }
