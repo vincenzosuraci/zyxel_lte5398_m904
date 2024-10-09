@@ -9,7 +9,7 @@ Il componente:
 
 # Configurazione
 È necessario conoscere i seguenti dati dello ZyXEL:
-- Indirizzo IP dello ZyXEL
+- Indirizzo IP
 - Username
 - Password
 
