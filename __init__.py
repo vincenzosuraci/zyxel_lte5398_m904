@@ -27,8 +27,8 @@ _LOGGER.setLevel(logging.DEBUG)
 
 REQUIREMENTS = ['beautifulsoup4']
 
-# Default scan interval = 15 minutes = 900 seconds
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=900)
+# Default scan interval = 10 seconds
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
