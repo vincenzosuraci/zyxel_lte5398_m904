@@ -16,12 +16,9 @@ if __name__ == "__main__":
     load_dotenv()
 
     params = {
-        "ip_address": os.getenv("IP_ADDRESS"),
-        "content": os.getenv("CONTENT"),
-        "key": os.getenv("KEY"),
-        "iv": os.getenv("IV"),
-        "aes_key": os.getenv("AES_KEY"),
-        "dynamic": False
+        "username": os.getenv("USER"),
+        "password": os.getenv("PASS"),
+        "ip_address": os.getenv("ADDR")
     }
 
     # ------------------------------------------------------------------------------------------------------------------

@@ -21,11 +21,6 @@ import json as json_lib
 # Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html
 DOMAIN = 'zyxel_lte5398_m904'
 
-CONF_ZYXEL_LOGIN_CONTENT = 'content'
-CONF_ZYXEL_LOGIN_KEY = 'key'
-CONF_ZYXEL_LOGIN_IV = 'iv'
-CONF_ZYXEL_AES_KEY = 'aes_key'
-
 # Setting log
 _LOGGER = logging.getLogger(DOMAIN)
 _LOGGER.setLevel(logging.DEBUG)
@@ -38,10 +33,8 @@ DEFAULT_SCAN_INTERVAL = timedelta(seconds=900)
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_IP_ADDRESS): cv.string,
-        vol.Required(CONF_ZYXEL_LOGIN_CONTENT): cv.string,
-        vol.Required(CONF_ZYXEL_LOGIN_KEY): cv.string,
-        vol.Required(CONF_ZYXEL_LOGIN_IV): cv.string,
-        vol.Required(CONF_ZYXEL_AES_KEY): cv.string,
+        vol.Required(CONF_USERNAME): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): cv.time_period,
     })
 }, extra=vol.ALLOW_EXTRA)
@@ -84,10 +77,8 @@ class ZyXEL_LTE5398_M904_Platform(ZyXEL_LTE5398_M904_Crawler):
 
         super().__init__(params={
             "ip_address": self.config[self.domain][CONF_IP_ADDRESS],
-            "content": self.config[self.domain][CONF_ZYXEL_LOGIN_CONTENT],
-            "key": self.config[self.domain][CONF_ZYXEL_LOGIN_KEY],
-            "iv": self.config[self.domain][CONF_ZYXEL_LOGIN_IV],
-            "aes_key": self.config[self.domain][CONF_ZYXEL_AES_KEY],
+            "username": self.config[self.domain][CONF_USERNAME],
+            "password": self.config[self.domain][CONF_PASSWORD]
         })
 
         self._update_status_interval = self.config[self.domain][CONF_SCAN_INTERVAL]
