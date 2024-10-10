@@ -3,19 +3,13 @@ from threading import Thread
 from datetime import timedelta
 import logging
 
-import requests
-
 import voluptuous as vol
-
-from datetime import datetime
 
 from homeassistant.const import (CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL)
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_interval
 
 from .zyxel import ZyXEL_LTE5398_M904_Crawler
-
-import json as json_lib
 
 # This is needed, it impacts on the name to be called in configurations.yaml
 # Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html
@@ -24,8 +18,6 @@ DOMAIN = 'zyxel_lte5398_m904'
 # Setting log
 _LOGGER = logging.getLogger(DOMAIN)
 _LOGGER.setLevel(logging.DEBUG)
-
-REQUIREMENTS = ['beautifulsoup4']
 
 # Default scan interval = 10 seconds
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
@@ -110,7 +102,7 @@ class ZyXEL_LTE5398_M904_Platform(ZyXEL_LTE5398_M904_Crawler):
     async def async_start_timer(self):
 
         # This is used to update the status periodically
-        self.info(self.name + ' data will be updated each ' + str(self.update_status_interval)) + ' seconds'
+        self.info(self.name + ' data will be updated each ' + str(self.update_status_interval) + ' seconds')
 
         # Do not put "self.async_update_credits()", with the parenthesis,
         # otherwise you will pass a Coroutine, not a Coroutine function!
