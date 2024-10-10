@@ -1,4 +1,4 @@
-from zyxel import ZyXEL_LTE5398_M904_Crawler
+from zyxel_lte5398_m904.zyxel import ZyXEL_LTE5398_M904_Crawler
 
 from dotenv import load_dotenv
 
@@ -6,13 +6,13 @@ import os
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
-# MAIN
+# MAIN - To be used for tests only!
 #
 # ----------------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
-    # Carica il file .env
+    # Load the .env file
     load_dotenv()
 
     params = {
@@ -30,6 +30,5 @@ if __name__ == "__main__":
     )
 
     zyxel.update_cell_status_data()
-    # zyxel.test_aes_rsa_encrypt()
 
 
