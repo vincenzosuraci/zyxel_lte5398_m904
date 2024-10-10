@@ -1,0 +1,6 @@
+{
+    "name": "ZyXEL LTE5398 M904",
+    "hide_default_branch": true,
+    "homeassistant": "2024.1.0",
+    "render_readme": true
+}
