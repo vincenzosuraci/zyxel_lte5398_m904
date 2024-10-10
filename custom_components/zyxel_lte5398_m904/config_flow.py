@@ -36,7 +36,7 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Prova a ottenere il modello del modem ZyXEL dinamicamente
                 try:
 
-                    model = zyxel.model
+                    model = await zyxel.async_get_model()
                     name = f"{MANUFACTURER} {model}"
                     title = name
 

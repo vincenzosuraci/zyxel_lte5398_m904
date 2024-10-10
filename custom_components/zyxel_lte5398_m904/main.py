@@ -1,6 +1,6 @@
 import asyncio
 
-from zyxel_lte5398_m904 import ZyXEL_LTE5398_M904_Crawler
+from zyxel import ZyXEL
 
 from dotenv import load_dotenv
 
@@ -27,10 +27,10 @@ if __name__ == "__main__":
     # ZyXEL LTE5398 M904
     # ------------------------------------------------------------------------------------------------------------------
 
-    zyxel = ZyXEL_LTE5398_M904_Crawler(
+    zyxel = ZyXEL(
         params=params
     )
 
-    zyxel.update_cell_status_data()
+    asyncio.run(zyxel.async_update_cell_status_data())
 
 
