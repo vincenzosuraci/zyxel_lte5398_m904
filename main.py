@@ -1,9 +1,4 @@
-import asyncio
-
-from zyxel_lte5398_m904 import ZyXEL_LTE5398_M904_Crawler
-
 from dotenv import load_dotenv
-
 import os
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -23,14 +18,29 @@ if __name__ == "__main__":
         "ip_address": os.getenv("ADDR")
     }
 
-    # ------------------------------------------------------------------------------------------------------------------
-    # ZyXEL LTE5398 M904
-    # ------------------------------------------------------------------------------------------------------------------
+    stand_alone = False
 
-    zyxel = ZyXEL_LTE5398_M904_Crawler(
-        params=params
-    )
+    if stand_alone:
 
-    zyxel.update_cell_status_data()
+        from zyxel_lte5398_m904 import ZyXEL_LTE5398_M904_Crawler
+        zyxel = ZyXEL_LTE5398_M904_Crawler(
+            params=params
+        )
+
+        zyxel.update_cell_status_data()
+
+    else:
+
+        from custom_components.zyxel_lte5398_m904.zyxel import ZyXEL
+        zyxel = ZyXEL(
+            params=params
+        )
+
+        import asyncio
+        asyncio.run(zyxel.async_update_cell_status_data())
+
+
+
+
 
 
