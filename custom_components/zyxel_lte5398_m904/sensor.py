@@ -20,6 +20,7 @@ class ZyXEL_Sensor(SensorEntity):
         self._name = name
         self._zyxel = zyxel
 
+        self._value = None
         self._device_class = props.get("device_class")
         self._last_reset = props.get("last_reset")
         self._native_unit_of_measurement = props.get("native_unit_of_measurement")
@@ -38,7 +39,7 @@ class ZyXEL_Sensor(SensorEntity):
     @property
     def state(self):
         """Restituisce lo stato corrente del sensore."""
-        return self._state
+        return self._value
 
     @property
     def device_class(self):
@@ -58,7 +59,7 @@ class ZyXEL_Sensor(SensorEntity):
     @property
     def native_value(self):
         """Ritorna il valore attuale del sensore nel suo formato nativo."""
-        return self._state
+        return self._value
 
     @property
     def options(self):
@@ -91,29 +92,29 @@ class ZyXEL_Sensor(SensorEntity):
             cell_status = await self._zyxel.async_get_cell_status()
             if cell_status is not None:
                 if self._name == ZYXEL_SENSOR_RSRP:
-                    self._state = int(cell_status["INTF_RSRP"])
+                    self._value = int(cell_status["INTF_RSRP"])
                 elif self._name == ZYXEL_SENSOR_RSRQ:
-                    self._state = int(cell_status["INTF_RSRQ"])
+                    self._value = int(cell_status["INTF_RSRQ"])
                 elif self._name == ZYXEL_SENSOR_SINR:
-                    self._state = int(cell_status["INTF_SINR"])
+                    self._value = int(cell_status["INTF_SINR"])
                 elif self._name == ZYXEL_SENSOR_ACCESS_TECH:
-                    self._state = int(cell_status["INTF_Current_Access_Technology"])
+                    self._value = int(cell_status["INTF_Current_Access_Technology"])
                 elif self._name == ZYXEL_SENSOR_CELL_ID:
-                    self._state = int(cell_status["INTF_Cell_ID"])
+                    self._value = int(cell_status["INTF_Cell_ID"])
                 elif self._name == ZYXEL_SENSOR_ENB:
-                    self._state = int(cell_status["INTF_Cell_ID"]) // 256
+                    self._value = int(cell_status["INTF_Cell_ID"]) // 256
                 elif self._name == ZYXEL_SENSOR_PHY_CELL_ID:
-                    self._state = int(cell_status["INTF_PhyCell_ID"])
+                    self._value = int(cell_status["INTF_PhyCell_ID"])
                 elif self._name == ZYXEL_SENSOR_MAIN_BAND:
                     ul = 5 * (int(cell_status["INTF_Uplink_Bandwidth"]) - 1)
                     dl = 5 * (int(cell_status["INTF_Downlink_Bandwidth"]) - 1)
-                    self._state = cell_status["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)"
+                    self._value = cell_status["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)"
                 elif self._name == ZYXEL_SENSOR_CA_BANDS:
                     CA_Bands = []
                     for scc in cell_status["SCC_Info"]:
                         if scc["Enable"]:
                             CA_Bands.append(scc["Band"])
-                    self._state = ' '.join(CA_Bands)
+                    self._value = ' '.join(CA_Bands)
         except Exception as e:
             pass
 
