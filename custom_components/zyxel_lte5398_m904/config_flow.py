@@ -3,7 +3,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, CONF_MODEL, CONF_SW_VERSION, CONF_NAME, MANUFACTURER
-from .zyxel import ZyXEL
+from .zyxel_ha import ZyXEL_HomeAssistant
 
 class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Gestisce il flusso di configurazione per il modem ZyXEL."""
@@ -23,15 +23,11 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if ip_address and username and password:
 
-                params = {
+                zyxel = ZyXEL_HomeAssistant(params={
                     "username": username,
                     "password": password,
                     "ip_address": ip_address
-                }
-
-                zyxel = ZyXEL(
-                    params=params
-                )
+                })
 
                 # Prova a ottenere il modello del modem ZyXEL dinamicamente
                 try:

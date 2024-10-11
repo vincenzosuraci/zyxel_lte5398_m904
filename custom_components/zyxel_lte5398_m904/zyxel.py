@@ -59,61 +59,64 @@ class ZyXEL:
         basic_information = await self._async_get_basic_information()
         return basic_information.get("SoftwareVersion")
 
-    async def async_update_cell_status(self):
+    async def async_get_cell_status(self, num_retries=MAX_NUM_RETRIES):
+
         if self._CellStatusTimestamp is None or time.time() > self._CellStatusTimestamp + self.MIN_INTERVAL_S:
+
             self._CellStatusTimestamp = time.time()
-            self._CellStatus = await self._async_get_cell_status()
-        return self._CellStatus
 
-    async def _async_get_cell_status(self, num_retries=MAX_NUM_RETRIES):
+            cell_status_data = None
 
-        await self._async_get_user_login()
+            await self._async_get_user_login()
 
-        url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_status"
-        headers = {
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Pragma': 'no-cache',
-            'Referer': 'http://' + self._ip_address + '/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-            'X-Requested-With': 'XMLHttpRequest',
-        }
-        try:
-            async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                await self._async_init_session()
-                async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                    if response.status == 200:
-                        zyxel_json = await response.json()
-                        decoded_zyxel_str = self.dxc(
-                            zyxel_json.get("content"),
-                            self._aes_key,
-                            zyxel_json.get("iv")
-                        )
-                        decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                        if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
-                            self.error(f"Cell Status page ({url}) error: {zyxel_json}")
-                            self.error(f"{response.content}")
-                            return None
-                        await self.async_close_session()
-                        return decoded_zyxel_json
-                    else:
-                        if num_retries > 0:
-                            self.info(f"Errore nella richiesta {url}: {response}")
-                            self._UserLogin = None
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_status"
+            headers = {
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Referer': 'http://' + self._ip_address + '/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+            try:
+                async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                    await self._async_init_session()
+                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
+                        if response.status == 200:
+                            zyxel_json = await response.json()
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
+                                self.error(f"Cell Status page ({url}) error: {zyxel_json}")
+                                self.error(f"{response.content}")
+                            else:
+                                cell_status_data = decoded_zyxel_json
                             await self.async_close_session()
-                            return await self._async_get_cell_status(num_retries - 1)
                         else:
-                            self.info(f"Errore nella richiesta {url}: {response}")
-                            return None
-        except aiohttp.ClientError as err:
-            self.error(f"Errore di connessione {url}: {err}")
-            return None
-        except asyncio.TimeoutError:
-            self.error(f"Timeout nella connessione {url}")
-            return None
-        pass
+                            if num_retries > 0:
+                                self.info(f"Errore nella richiesta {url}: {response}")
+                                self._UserLogin = None
+                                await self.async_close_session()
+                                cell_status_data = await self.async_get_cell_status(num_retries - 1)
+                            else:
+                                self.info(f"Errore nella richiesta {url}: {response}")
+            except aiohttp.ClientError as err:
+                self.error(f"Errore di connessione {url}: {err}")
+            except asyncio.TimeoutError:
+                self.error(f"Timeout nella connessione {url}")
+
+            if cell_status_data is not None:
+                cell_status_data_object = cell_status_data.get("Object")
+                if cell_status_data_object is not None:
+                    self._CellStatus = cell_status_data_object[0]
+
+        return self._CellStatus
 
     async def _async_get_user_login(self):
         if self._UserLogin is None:
