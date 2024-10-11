@@ -33,11 +33,12 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 try:
 
                     model = await zyxel.async_get_model()
+                    sw_version = await zyxel.async_get_sw_version()
                     name = f"{MANUFACTURER} {model}"
                     title = name
 
                     user_input[CONF_MODEL] = model
-                    user_input[CONF_SW_VERSION] = zyxel.sw_version
+                    user_input[CONF_SW_VERSION] = sw_version
                     user_input[CONF_NAME] = name
 
                     return self.async_create_entry(
