@@ -245,8 +245,7 @@ class ZyXEL_LTE5398_M904_Crawler:
         # Effettua la richiesta GET
         response = session.get(
             url,
-            headers=headers,
-            verify=False
+            headers=headers
         )
 
         # get http status code
@@ -317,8 +316,7 @@ class ZyXEL_LTE5398_M904_Crawler:
         response = session.post(
             url,
             json=data,
-            headers=headers,
-            verify=False
+            headers=headers
         )
 
         # get http status code
