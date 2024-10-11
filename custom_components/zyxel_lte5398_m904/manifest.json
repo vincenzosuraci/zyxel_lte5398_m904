@@ -11,7 +11,8 @@
   "integration_type": "device",
   "issue_tracker": "https://github.com/vincenzosuraci/hass_zyxel_lte5398_m904/issues",
   "requirements": [
-    "pycryptodome==3.14.1"
+    "aiohttp",
+    "pycryptodome"
   ],
   "iot_class": "cloud_polling",
   "config_flow": true,

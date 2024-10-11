@@ -37,7 +37,7 @@ if __name__ == "__main__":
         )
 
         import asyncio
-        asyncio.run(zyxel.async_update_cell_status())
+        asyncio.run(zyxel.async_get_cell_status())
 
 
 
