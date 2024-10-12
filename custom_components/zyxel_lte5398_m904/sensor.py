@@ -46,7 +46,7 @@ class ZyXEL_Sensor(SensorEntity):
         self._attr_device_info = self._device_info
         self._attr_unique_id = ".".join([
             SENSOR_DOMAIN,
-            self._device_info.manufacturer,
+            self._device_info.get("manufacturer"),
             zyxel.ip_address,
             self.name
         ])
