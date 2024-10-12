@@ -132,8 +132,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
                 "icon": "mdi:signal",
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS,
-                "suggested_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
+                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_RSRP, props))
 
@@ -142,8 +141,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
                 "icon": "mdi:signal",
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS,
-                "suggested_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
+                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_RSRQ, props))
 
@@ -152,8 +150,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
                 "icon": "mdi:signal",
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS,
-                "suggested_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
+                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_SINR, props))
 
