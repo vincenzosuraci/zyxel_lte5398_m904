@@ -41,7 +41,7 @@ class ZyXEL_Sensor(SensorEntity):
         # Imposta le informazioni sul dispositivo
         self._attr_native_unit_of_measurement = self._native_unit_of_measurement
         self._attr_native_value = self._value
-        self._attr_name = self.entity_description.name
+        self._attr_name = self._name
         self._attr_device_info = self._device_info
         self._attr_unique_id = ".".join([
             SENSOR_DOMAIN,
