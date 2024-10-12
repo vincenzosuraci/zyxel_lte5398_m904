@@ -1,5 +1,6 @@
 from .zyxel import ZyXEL
 
+
 import logging
 _LOGGER = logging.getLogger(__name__)
 
