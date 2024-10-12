@@ -42,6 +42,10 @@ class ZyXEL:
         self._session = None
         self._cookies = None
 
+    @property
+    def ip_address(self):
+        return self._ip_address
+
     def debug(self, msg):
         print(msg)
 
