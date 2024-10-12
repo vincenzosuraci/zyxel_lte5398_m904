@@ -189,6 +189,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
 
     return sensors
 
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
 
     # Recupera l'entry di configurazione per il dominio
