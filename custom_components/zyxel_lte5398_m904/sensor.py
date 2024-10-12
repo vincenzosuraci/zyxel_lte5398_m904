@@ -30,7 +30,10 @@ class ZyXEL_Sensor(SensorEntity):
         self._suggested_display_precision = props.get("suggested_display_precision")
         self._suggested_unit_of_measurement = props.get("suggested_unit_of_measurement")
         self._icon = props.get("icon")
+        self._device_info = props.get("device_info")
 
+        # Imposta le informazioni sul dispositivo
+        self._attr_device_info = self._device_info
         self._attr_unique_id = f"{DEVICE_MANUFACTURER}_{zyxel.ip_address}_{self.name}"
         self._value = None
 
@@ -122,7 +125,7 @@ class ZyXEL_Sensor(SensorEntity):
             pass
 
 
-async def get_sensors(zyxel: ZyXEL_HomeAssistant):
+async def get_sensors(zyxel: ZyXEL_HomeAssistant, device_info):
 
     sensors = []
 
@@ -133,6 +136,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
         if "INTF_RSRP" in cell_status:
             props = {
                 "icon": "mdi:signal",
+                "device_info": device_info,
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
                 "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
@@ -142,6 +146,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
         if "INTF_RSRQ" in cell_status:
             props = {
                 "icon": "mdi:signal",
+                "device_info": device_info,
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
                 "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
@@ -151,6 +156,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
         if "INTF_SINR" in cell_status:
             props = {
                 "icon": "mdi:signal",
+                "device_info": device_info,
                 "suggested_display_precision": 0,
                 "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
                 "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
@@ -160,12 +166,14 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
         if "INTF_Current_Access_Technology" in cell_status:
             props = {
                 "icon": "mdi:radio-tower",
+                "device_info": device_info
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_ACCESS_TECH, props))
 
         if "INTF_Cell_ID" in cell_status:
             props = {
                 "icon": "mdi:radio-tower",
+                "device_info": device_info
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_ENB, props))
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_CELL_ID, props))
@@ -173,6 +181,7 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
         if "INTF_PhyCell_ID" in cell_status:
             props = {
                 "icon": "mdi:radio-tower",
+                "device_info": device_info
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_PHY_CELL_ID, props))
 
@@ -181,12 +190,14 @@ async def get_sensors(zyxel: ZyXEL_HomeAssistant):
                 and "INTF_Current_Band" in cell_status):
             props = {
                 "icon": "mdi:radio-tower",
+                "device_info": device_info
             }
-            sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_PHY_CELL_ID, props))
+            sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_MAIN_BAND, props))
 
         if "SCC_Info" in cell_status:
             props = {
                 "icon": "mdi:radio-tower",
+                "device_info": device_info
             }
             sensors.append(ZyXEL_Sensor(zyxel, ZYXEL_SENSOR_CA_BANDS, props))
 
@@ -205,10 +216,17 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "ip_address": config_entry.data.get(CONF_IP_ADDRESS)
     })
 
+    device_info = {
+        "identifiers": {(DOMAIN, config_entry.data[CONF_IP_ADDRESS])},  # Associa il dispositivo all'entry ID
+        "name": config_entry.data.get(DEVICE_NAME),
+        "model": config_entry.data.get(DEVICE_MODEL),
+        "manufacturer": manufacturer,
+    }
+
     _LOGGER.debug(config_entry.data)
 
     # Recupero dei sensori in base ai dati dello ZyXEL
-    sensors = await get_sensors(zyxel)
+    sensors = await get_sensors(zyxel, device_info)
 
     _LOGGER.debug(sensors)
 
