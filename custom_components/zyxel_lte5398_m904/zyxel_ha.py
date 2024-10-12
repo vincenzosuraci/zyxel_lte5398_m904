@@ -12,5 +12,8 @@ class ZyXEL_HomeAssistant(ZyXEL):
     def info(self, msg):
         _LOGGER.info(msg)
 
+    def warning(self, msg):
+        _LOGGER.warning(msg)
+
     def error(self, msg):
         _LOGGER.error(msg)

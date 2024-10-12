@@ -48,6 +48,9 @@ class ZyXEL:
     def info(self, msg):
         print(msg)
 
+    def warning(self, msg):
+        print(msg)
+
     def error(self, msg):
         print(msg)
 
@@ -100,12 +103,12 @@ class ZyXEL:
                             await self.async_close_session()
                         else:
                             if num_retries > 0:
-                                self.info(f"Errore nella richiesta {url}: {response}")
+                                self.warning(f"Errore nella richiesta {url}: {response}")
                                 self._UserLogin = None
                                 await self.async_close_session()
                                 cell_status_data = await self.async_get_cell_status(num_retries - 1)
                             else:
-                                self.info(f"Errore nella richiesta {url}: {response}")
+                                self.error(f"Errore nella richiesta {url}: {response}")
             except aiohttp.ClientError as err:
                 self.error(f"Errore di connessione {url}: {err}")
             except asyncio.TimeoutError:
@@ -292,7 +295,7 @@ class ZyXEL:
         """Inizializza la sessione mantenuta."""
         if self._session is None:
             self._session = aiohttp.ClientSession()
-            self.info("Session started")
+            self.debug("Session started")
 
     async def async_close_session(self):
         """Chiude la sessione se esiste."""
@@ -300,4 +303,4 @@ class ZyXEL:
             await self._session.close()
             self._session = None
             self._cookies = None
-            self.info("Session closed")
+            self.debug("Session closed")
