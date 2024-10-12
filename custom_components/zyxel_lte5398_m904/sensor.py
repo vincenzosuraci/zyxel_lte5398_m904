@@ -8,6 +8,7 @@ from .zyxel_ha import ZyXEL_HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class ZyXEL_Sensor(SensorEntity):
     """Rappresenta un sensore di stato del modem ZyXEL."""
 
@@ -31,6 +32,7 @@ class ZyXEL_Sensor(SensorEntity):
         self._icon = props.get("icon")
 
         self._unique_id = f"{DEVICE_MANUFACTURER}_{zyxel.ip_address}_{self.name}"
+        self.debug(self._unique_id)
         self._value = None
 
     @property
