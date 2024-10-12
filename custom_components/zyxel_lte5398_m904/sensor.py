@@ -204,7 +204,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "ip_address": config_entry.data.get(CONF_IP_ADDRESS)
     })
 
+    _LOGGER.debug(config_entry.data)
+
     # Recupero dei sensori in base ai dati dello ZyXEL
     sensors = await get_sensors(zyxel)
+
+    _LOGGER.debug(sensors)
 
     async_add_entities(sensors)
