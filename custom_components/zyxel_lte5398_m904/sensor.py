@@ -32,7 +32,7 @@ class ZyXEL_Sensor(SensorEntity):
         self._icon = props.get("icon")
 
         self._unique_id = f"{DEVICE_MANUFACTURER}_{zyxel.ip_address}_{self.name}"
-        self.debug(self._unique_id)
+        _LOGGER.debug(self._unique_id)
         self._value = None
 
     @property
