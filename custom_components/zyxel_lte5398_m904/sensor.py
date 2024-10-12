@@ -39,6 +39,8 @@ class ZyXEL_Sensor(SensorEntity):
         self._icon = props.get("icon")
         self._device_info = props.get("device_info")
 
+        _LOGGER.debug(self._device_info)
+
         # Imposta le informazioni sul dispositivo
         self._attr_native_unit_of_measurement = self._native_unit_of_measurement
         self._attr_native_value = self._value
