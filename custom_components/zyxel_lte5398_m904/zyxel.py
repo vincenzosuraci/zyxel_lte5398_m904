@@ -118,6 +118,7 @@ class ZyXEL:
                 cell_status_data_object = cell_status_data.get("Object")
                 if cell_status_data_object is not None:
                     self._CellStatus = cell_status_data_object[0]
+                    self.debug(self._CellStatus)
 
         return self._CellStatus
 
@@ -302,5 +303,4 @@ class ZyXEL:
         if self._session:
             await self._session.close()
             self._session = None
-            self._cookies = None
             self.debug("Session closed")

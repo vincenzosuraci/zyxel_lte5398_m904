@@ -39,6 +39,11 @@ if __name__ == "__main__":
         import asyncio
         asyncio.run(zyxel.async_get_cell_status())
 
+        import time
+        time.sleep(5)
+
+        asyncio.run(zyxel.async_get_cell_status())
+
 
 
 
