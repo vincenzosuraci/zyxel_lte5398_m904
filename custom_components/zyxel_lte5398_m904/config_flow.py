@@ -2,8 +2,9 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, CONF_MODEL, CONF_SW_VERSION, CONF_NAME, MANUFACTURER
+from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, DEVICE_MODEL, DEVICE_SW_VERSION, DEVICE_NAME, DEVICE_MANUFACTURER
 from .zyxel_ha import ZyXEL_HomeAssistant
+
 
 class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Gestisce il flusso di configurazione per il modem ZyXEL."""
@@ -16,6 +17,7 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+
             # Verifica se l'input è valido (opzionale: potresti fare un controllo sulla connessione qui)
             ip_address = user_input[CONF_IP_ADDRESS]
             username = user_input[CONF_USERNAME]
@@ -34,16 +36,21 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                     model = await zyxel.async_get_model()
                     sw_version = await zyxel.async_get_sw_version()
-                    name = f"{MANUFACTURER} {model}"
+                    name = f"{DEVICE_MANUFACTURER} {model}"
                     title = name
 
-                    user_input[CONF_MODEL] = model
-                    user_input[CONF_SW_VERSION] = sw_version
-                    user_input[CONF_NAME] = name
+                    data = {
+                        CONF_IP_ADDRESS: ip_address,
+                        CONF_USERNAME: username,
+                        CONF_PASSWORD: password,
+                        DEVICE_MODEL: model,
+                        DEVICE_SW_VERSION: sw_version,
+                        DEVICE_NAME: name
+                    }
 
                     return self.async_create_entry(
                         title=title,
-                        data=user_input
+                        data=data
                     )
 
                 except Exception:

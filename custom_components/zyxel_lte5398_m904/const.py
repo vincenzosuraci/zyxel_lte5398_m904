@@ -1,17 +1,24 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# Home Assistant Domain
+# ----------------------------------------------------------------------------------------------------------------------
 DOMAIN = "zyxel_lte5398_m904"
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Home Assistant Domain
+# ----------------------------------------------------------------------------------------------------------------------
 SENSOR = "sensor"
 
-TITLE = "ZyXEL LTE5398-M904"
-
-MANUFACTURER = "ZyXEL"
-
+# ----------------------------------------------------------------------------------------------------------------------
+# Home Assistant Config Flow User Input Parameters
+# ----------------------------------------------------------------------------------------------------------------------
 CONF_IP_ADDRESS = "ip_address"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 
-CONF_NAME = "name"
-CONF_MODEL = "model"
-CONF_SW_VERSION = "sw_version"
+DEVICE_NAME = "name"
+DEVICE_MODEL = "model"
+DEVICE_SW_VERSION = "sw_version"
+DEVICE_MANUFACTURER = "ZyXEL"
 
 ZYXEL_SENSOR_RSRP ="RSRP"
 ZYXEL_SENSOR_RSRQ = "RSRQ"

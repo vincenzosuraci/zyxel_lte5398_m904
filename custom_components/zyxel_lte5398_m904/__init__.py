@@ -1,7 +1,7 @@
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from .const import SENSOR, DOMAIN, MANUFACTURER, CONF_IP_ADDRESS, CONF_MODEL, CONF_NAME, CONF_SW_VERSION
+from .const import SENSOR, DOMAIN, DEVICE_MANUFACTURER, CONF_IP_ADDRESS, DEVICE_MODEL, DEVICE_NAME, DEVICE_SW_VERSION
 
 try:
     from homeassistant.core import HomeAssistant
@@ -20,11 +20,11 @@ try:
         # Set up the ZyXEL component from a config entry
         hass.data[DOMAIN] = config_entry.data
 
-        manufacturer = MANUFACTURER
+        manufacturer = DEVICE_MANUFACTURER
         ip_address = config_entry.data[CONF_IP_ADDRESS]
-        model = config_entry.data.get(CONF_MODEL)
-        name = config_entry.data.get(CONF_NAME)
-        sw_version = config_entry.data.get(CONF_SW_VERSION)
+        model = config_entry.data.get(DEVICE_MODEL)
+        name = config_entry.data.get(DEVICE_NAME)
+        sw_version = config_entry.data.get(DEVICE_SW_VERSION)
 
         # Register the ZyXEL device in the device registry
         device_registry = dr.async_get(hass)
