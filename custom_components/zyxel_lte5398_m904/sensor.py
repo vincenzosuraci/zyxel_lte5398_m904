@@ -27,6 +27,7 @@ class ZyXEL_Sensor(SensorEntity):
         self._hass = hass
         self._value = None
 
+        self._name = name
         self._device_class = props.get("device_class")
         self._last_reset = props.get("last_reset")
         self._native_unit_of_measurement = props.get("native_unit_of_measurement")
