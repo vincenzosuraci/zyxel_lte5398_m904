@@ -220,7 +220,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         "identifiers": {(DOMAIN, config_entry.data[CONF_IP_ADDRESS])},  # Associa il dispositivo all'entry ID
         "name": config_entry.data.get(DEVICE_NAME),
         "model": config_entry.data.get(DEVICE_MODEL),
-        "manufacturer": manufacturer,
+        "manufacturer": DEVICE_MANUFACTURER,
     }
 
     _LOGGER.debug(config_entry.data)
