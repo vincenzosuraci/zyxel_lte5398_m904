@@ -53,7 +53,7 @@ class ZyXEL_Sensor(SensorEntity):
             self.name
         ])
         self._attr_device_info = DeviceInfo(
-            identifiers=self._device_info.indentifiers
+            identifiers=self._device_info.get("identifiers")
         )
 
     @property
