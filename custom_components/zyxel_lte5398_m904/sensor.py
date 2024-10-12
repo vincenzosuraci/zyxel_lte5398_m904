@@ -31,14 +31,8 @@ class ZyXEL_Sensor(SensorEntity):
         self._suggested_unit_of_measurement = props.get("suggested_unit_of_measurement")
         self._icon = props.get("icon")
 
-        self._unique_id = f"{DEVICE_MANUFACTURER}_{zyxel.ip_address}_{self.name}"
-        _LOGGER.debug(self._unique_id)
+        self.attr_unique_id = f"{DEVICE_MANUFACTURER}_{zyxel.ip_address}_{self.name}"
         self._value = None
-
-    @property
-    def unique_id(self):
-        """Restituisce un identificativo univoco per il sensore."""
-        return self._unique_id
 
     @property
     def name(self):
