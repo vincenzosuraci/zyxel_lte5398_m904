@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     if stand_alone:
 
-        from zyxel_lte5398_m904 import ZyXEL_LTE5398_M904_Crawler
+        from zyxel_lte5398_m904_stand_alone import ZyXEL_LTE5398_M904_Crawler
         zyxel = ZyXEL_LTE5398_M904_Crawler(
             params=params
         )
