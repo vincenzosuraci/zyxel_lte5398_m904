@@ -226,66 +226,69 @@ class ZyXEL_LTE5398_M904_Crawler:
         if self._UserLogin is None:
             self.getUserLogin()
 
-        url = "http://" + self.ip_address + "/cgi-bin/DAL?oid=cellwan_status"
+        if self._UserLogin is not None:
+            url = "http://" + self.ip_address + "/cgi-bin/DAL?oid=cellwan_status"
 
-        # session keeping cookies
-        session = self.get_session()
+            # session keeping cookies
+            session = self.get_session()
 
-        headers = {
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Pragma': 'no-cache',
-            'Referer': 'http://' + self.ip_address + '/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-            'X-Requested-With': 'XMLHttpRequest',
-        }
+            headers = {
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Referer': 'http://' + self.ip_address + '/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
 
-        # Effettua la richiesta GET
-        response = session.get(
-            url,
-            headers=headers
-        )
+            # Effettua la richiesta GET
+            response = session.get(
+                url,
+                headers=headers
+            )
 
-        # get http status code
-        http_status_code = response.status_code
+            # get http status code
+            http_status_code = response.status_code
 
-        # check response is okay
-        if http_status_code != 200:
-            if num_retries > 0:
-                self._UserLogin = None
-                self._dynamic = False
-                return self.getCellStatus(num_retries-1)
-            else:
-                self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
+            # check response is okay
+            if http_status_code != 200:
+                if num_retries > 0:
+                    self._UserLogin = None
+                    self._dynamic = False
+                    return self.getCellStatus(num_retries-1)
+                else:
+                    self.error('Cell Status page (' + url + ') error: ' + str(http_status_code))
+                    # get html in bytes
+                    self.debug(str(response.content))
+                    return None
+
+            json_str = response.text
+
+            zyxel_json = json_lib.loads(json_str)
+
+            #self.info(zyxel_json)
+
+            decoded_zyxel_str = self.dxc(
+                zyxel_json.get("content"),
+                self.aes_key,
+                zyxel_json.get("iv")
+            )
+
+            decoded_zyxel_json = json_lib.loads(decoded_zyxel_str )
+
+            if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
+                self.error('Cell Status page (' + url + ') error: ' + str(zyxel_json))
                 # get html in bytes
-                self.debug(str(response.content))
+                self.error(str(response.content))
                 return None
 
-        json_str = response.text
+            self._CellStatus = decoded_zyxel_json
 
-        zyxel_json = json_lib.loads(json_str)
+            return self._CellStatus
 
-        #self.info(zyxel_json)
-
-        decoded_zyxel_str = self.dxc(
-            zyxel_json.get("content"),
-            self.aes_key,
-            zyxel_json.get("iv")
-        )
-
-        decoded_zyxel_json = json_lib.loads(decoded_zyxel_str )
-
-        if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
-            self.error('Cell Status page (' + url + ') error: ' + str(zyxel_json))
-            # get html in bytes
-            self.error(str(response.content))
-            return None
-
-        self._CellStatus = decoded_zyxel_json
-
-        return self._CellStatus
+        return None
 
     def getUserLogin(self):
 
@@ -326,8 +329,9 @@ class ZyXEL_LTE5398_M904_Crawler:
         if http_status_code != 200:
             if http_status_code == 401:
                 json_str = response.text
-                json = json_lib.loads(json_str)
-                if json.get('result') == 'Decrypt Fail':
+                json_arr = json_lib.loads(json_str)
+                if json_arr.get('result') == 'Decrypt Fail':
+                    self._session = None
                     self.error('User login failure, due to a Decrypt Fail')
                     return None
             else:
