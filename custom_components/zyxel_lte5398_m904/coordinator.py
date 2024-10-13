@@ -5,7 +5,7 @@ import logging
 
 import async_timeout
 
-from homeassistant.components.light import LightEntity
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import (
@@ -23,8 +23,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     """Config entry example."""
     # assuming API object stored here by __init__.py
-    my_api = hass.data[DOMAIN][entry.entry_id]
-    coordinator = ZyXEL_LTE5398_M904_Coordinator(hass, my_api)
+    zyxel = hass.data[DOMAIN][entry.entry_id]
+    coordinator = ZyXEL_LTE5398_M904_Coordinator(hass, zyxel)
 
     # Fetch initial data so we have data when entities subscribe
     #
@@ -37,14 +37,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     await coordinator.async_config_entry_first_refresh()
 
     async_add_entities(
-        MyEntity(coordinator, idx) for idx, ent in enumerate(coordinator.data)
+        ZyXEL_LTE5398_M904_Entity(coordinator, idx) for idx, ent in enumerate(coordinator.data)
     )
 
 
 class ZyXEL_LTE5398_M904_Coordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
-    def __init__(self, hass, my_api):
+    def __init__(self, hass, zyxel):
         """Initialize my coordinator."""
         super().__init__(
             hass,
@@ -58,7 +58,7 @@ class ZyXEL_LTE5398_M904_Coordinator(DataUpdateCoordinator):
             # being dispatched to listeners
             always_update=True
         )
-        self.my_api = my_api
+        self.zyxel = zyxel
         self._device: MyDevice | None = None
 
     async def _async_setup(self):
@@ -70,7 +70,7 @@ class ZyXEL_LTE5398_M904_Coordinator(DataUpdateCoordinator):
         This method will be called automatically during
         coordinator.async_config_entry_first_refresh.
         """
-        self._device = await self.my_api.get_device()
+        self._device = await self.zyxel.get_device()
 
     async def _async_update_data(self):
         """Fetch data from API endpoint.
@@ -95,7 +95,7 @@ class ZyXEL_LTE5398_M904_Coordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}")
 
 
-class MyEntity(CoordinatorEntity, LightEntity):
+class ZyXEL_LTE5398_M904_Entity(CoordinatorEntity, SensorEntity):
     """An entity using CoordinatorEntity.
 
     The CoordinatorEntity class provides:
@@ -116,14 +116,3 @@ class MyEntity(CoordinatorEntity, LightEntity):
         """Handle updated data from the coordinator."""
         self._attr_is_on = self.coordinator.data[self.idx]["state"]
         self.async_write_ha_state()
-
-    async def async_turn_on(self, **kwargs):
-        """Turn the light on.
-
-        Example method how to request data updates.
-        """
-        # Do the turning on.
-        # ...
-
-        # Update the data
-        await self.coordinator.async_request_refresh()

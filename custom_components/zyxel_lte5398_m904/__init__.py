@@ -1,7 +1,8 @@
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from .const import SENSOR, DOMAIN, DEVICE_MANUFACTURER, CONF_IP_ADDRESS, DEVICE_MODEL, DEVICE_NAME, DEVICE_SW_VERSION
+from .const import SENSOR, DOMAIN, DEVICE_MANUFACTURER, CONF_IP_ADDRESS, DEVICE_MODEL, DEVICE_NAME, DEVICE_SW_VERSION, \
+    CONF_USERNAME
 
 try:
     from homeassistant.core import HomeAssistant
@@ -20,8 +21,17 @@ try:
         # Set up the ZyXEL component from a config entry
         hass.data[DOMAIN] = config_entry.data
 
-        manufacturer = DEVICE_MANUFACTURER
         ip_address = config_entry.data[CONF_IP_ADDRESS]
+        username = config_entry.data[CONF_USERNAME]
+        password = config_entry.data[CONF_PASSWORD]
+
+        hass.data[DOMAIN][config_entry.entry_id] = ZyXEL_HomeAssistant(params={
+            "username": username,
+            "password": password,
+            "ip_address": ip_address
+        })
+
+        manufacturer = DEVICE_MANUFACTURER
         model = config_entry.data.get(DEVICE_MODEL)
         name = config_entry.data.get(DEVICE_NAME)
         sw_version = config_entry.data.get(DEVICE_SW_VERSION)
