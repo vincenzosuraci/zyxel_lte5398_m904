@@ -14,7 +14,7 @@ try:
 
     # This is needed, it impacts on the name to be called in configurations.yaml
     # Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html
-    DOMAIN = 'zyxel_lte5398_m904'
+    DOMAIN = 'zyxel_lte5398_m904_stand_alone'
 
     # Setting log
     _LOGGER = logging.getLogger(DOMAIN)

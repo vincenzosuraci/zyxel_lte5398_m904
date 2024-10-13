@@ -1,9 +1,9 @@
 {
-  "domain": "zyxel_lte5398_m904",
+  "domain": "zyxel_lte5398_m904_stand_alone",
   "name": "ZyXEL LTE5398-M904",
   "version": "1.0.0",
   "homeassistant": "2024.8.0",
-  "documentation": "https://github.com/vincenzosuraci/hass_zyxel_lte5398_m904",
+  "documentation": "https://github.com/vincenzosuraci/zyxel_lte5398_m904",
   "dependencies": [],
   "codeowners": ["@vincenzosuraci"],
   "requirements": [
