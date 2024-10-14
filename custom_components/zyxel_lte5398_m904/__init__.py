@@ -44,8 +44,8 @@ try:
         # Esegui il primo aggiornamento
         await coordinator.async_config_entry_first_refresh()
 
-        # Aggiungi i sensori
-        await async_setup_sensors(hass, config_entry, async_add_entities)
+        # Utilizza `async_add_platform` per configurare la piattaforma sensor
+        hass.config_entries.async_setup_platforms(config_entry, [SENSOR])
 
         return True
 
