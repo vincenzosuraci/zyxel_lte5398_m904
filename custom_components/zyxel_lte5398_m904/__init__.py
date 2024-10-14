@@ -17,9 +17,6 @@ from .const import (
 try:
     from homeassistant.core import HomeAssistant
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.helpers import device_registry as dr
-    from homeassistant.helpers.typing import ConfigType
-    from homeassistant.helpers import discovery
 
     from .zyxel_device import ZyxelDevice
     from .coordinator import ZyxelCoordinator
