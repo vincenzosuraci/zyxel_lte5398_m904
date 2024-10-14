@@ -19,7 +19,10 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
 
         self._description = description
         self._attr_name = description.name
-        self._attr_unique_id = f"{device_info.name}_{description.key}"
+
+        _LOGGER.debug(f"Device info: {device_info}")
+
+        self._attr_unique_id = f"{device_info["name"]}_{description.key}"
         self._attr_icon = description.icon
         self._attr_unit_of_measurement = description.unit_of_measurement
         self._attr_device_info = device_info
