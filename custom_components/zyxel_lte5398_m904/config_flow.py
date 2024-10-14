@@ -41,8 +41,10 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_PASSWORD: password
                         }
 
+                        title = await zyxel.get_title()
+
                         return self.async_create_entry(
-                            title=zyxel.get_title(),
+                            title=title,
                             data=data
                         )
 
