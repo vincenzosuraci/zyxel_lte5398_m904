@@ -31,7 +31,7 @@ class ZyxelDevice(Zyxel):
 
         data = None
 
-        raw_data = super().fetch_data()
+        raw_data = await super().fetch_data()
 
         if raw_data is not None:
 
