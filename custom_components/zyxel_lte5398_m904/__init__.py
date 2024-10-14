@@ -45,7 +45,8 @@ try:
         await coordinator.async_config_entry_first_refresh()
 
         # Utilizza `async_add_platform` per configurare la piattaforma sensor
-        hass.config_entries.async_setup_platforms(config_entry, [SENSOR])
+        # hass.config_entries.async_setup_platforms(config_entry, [SENSOR])
+        await hass.config_entries.async_forward_entry_setups(config_entry, [SENSOR])
 
         return True
 
