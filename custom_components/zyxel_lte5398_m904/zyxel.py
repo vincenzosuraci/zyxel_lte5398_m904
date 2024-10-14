@@ -17,7 +17,7 @@ from Cryptodome.Util.Padding import pad, unpad
 #
 # ----------------------------------------------------------------------------------------------------------------------
 
-class ZyXEL:
+class Zyxel:
 
     # Massimo numero di prove di login
     MAX_NUM_RETRIES = 1
@@ -58,118 +58,137 @@ class ZyXEL:
     def error(self, msg):
         print(msg)
 
-    async def async_get_model(self):
-        basic_information = await self._async_get_basic_information()
+    async def get_model(self):
+        basic_information = await self._get_basic_information()
         return basic_information.get("ModelName")
 
-    async def async_get_sw_version(self):
-        basic_information = await self._async_get_basic_information()
+    async def get_sw_version(self):
+        basic_information = await self._get_basic_information()
         return basic_information.get("SoftwareVersion")
 
-    async def async_get_cell_status(self, num_retries=MAX_NUM_RETRIES):
+    async def fetch_data(self):
+        return await self._get_cell_status()
+
+    async def test_connection(self):
+        data = await self.fetch_data()
+        return data is not None
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Get methods
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def _get_cell_status(self, num_retries=MAX_NUM_RETRIES):
 
         if self._CellStatusTimestamp is None or time.time() > self._CellStatusTimestamp + self.MIN_INTERVAL_S:
 
             self._CellStatusTimestamp = time.time()
 
-            cell_status_data = None
+            if await self._get_user_login() is not None:
 
-            await self._async_get_user_login()
+                cell_status_data = None
 
-            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_status"
-            headers = {
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Pragma': 'no-cache',
-                'Referer': 'http://' + self._ip_address + '/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-            try:
-                async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()
-                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        if response.status == 200:
+                url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_status"
+                headers = {
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'Pragma': 'no-cache',
+                    'Referer': 'http://' + self._ip_address + '/',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+                try:
+                    async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                        await self._async_init_session()
+                        async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
                             zyxel_json = await response.json()
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
-                                self.error(f"Cell Status page ({url}) error: {zyxel_json}")
-                                self.error(f"{response.content}")
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == "ZCFG_SUCCESS":
+                                    cell_status_data = decoded_zyxel_json
+                                else:
+                                    msg = 'Cell Status (' + url + ') error: ' + str(zyxel_json)
+                                    code = 403
+                                    raise ZyxelError(msg, code)
+                                await self._async_close_session()
                             else:
-                                cell_status_data = decoded_zyxel_json
-                            await self.async_close_session()
-                        else:
-                            if num_retries > 0:
-                                self.warning(f"Errore nella richiesta {url}: {response}")
-                                self._UserLogin = None
-                                await self.async_close_session()
-                                cell_status_data = await self.async_get_cell_status(num_retries - 1)
-                            else:
-                                self.error(f"Errore nella richiesta {url}: {response}")
-            except aiohttp.ClientError as err:
-                self.error(f"Errore di connessione {url}: {err}")
-            except asyncio.TimeoutError:
-                self.error(f"Timeout nella connessione {url}")
+                                if num_retries > 0:
+                                    self._UserLogin = None
+                                    await self._async_close_session()
+                                    cell_status_data = await self._get_cell_status(num_retries - 1)
+                                else:
+                                    msg = f"Request error {url}: {response.status}"
+                                    code = 402
+                                    raise ZyxelError(msg, code)
+                except aiohttp.ClientError as err:
+                        msg = f"Connection error {url}: {err}"
+                        code = 401
+                        raise ZyxelError(msg, code)
+                except asyncio.TimeoutError:
+                    msg = f"Connection timeout {url}"
+                    code = 400
+                    raise ZyxelError(msg, code)
 
-            if cell_status_data is not None:
-                cell_status_data_object = cell_status_data.get("Object")
-                if cell_status_data_object is not None:
-                    self._CellStatus = cell_status_data_object[0]
-                    self.debug(self._CellStatus)
+                if cell_status_data is not None:
+                    cell_status_data_object = cell_status_data.get("Object")
+                    if cell_status_data_object is not None:
+                        self._CellStatus = cell_status_data_object[0]
+                        self.debug(self._CellStatus)
 
         return self._CellStatus
 
-    async def _async_get_user_login(self):
+    async def _get_user_login(self):
         if self._UserLogin is None:
-            if await self._async_get_rsa_public_key() is None:
-                return None
-            url = 'http://' + self._ip_address + '/UserLogin'
-            data = self._get_content_key_iv()
-            headers = {
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
-                'Origin': 'http://' + self._ip_address,
-                'Pragma': 'no-cache',
-                'Referer': 'http://' + self._ip_address + '/login',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-            try:
-                async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()
-                    async with self._session.post(url, json=data, headers=headers) as response:
-                        if response.status == 200:
-                            self._UserLogin = await response.json()
-                            self.info("UserLogin successfully executed")
-                            set_cookie = response.headers.get('Set-Cookie')
-                            if set_cookie:
-                                session_cookie = set_cookie.split(';')[0]
-                                cookie_name, cookie_value = session_cookie.split('=')
-                                self._cookies = {cookie_name: cookie_value}
-                        else:
-                            err = await response.json()
-                            self.error(f"Errore nella richiesta {url}: {response.status} {err}")
-                            return None
-            except aiohttp.ClientError as err:
-                self.error(f"Errore di connessione {url}: {err}")
-                return None
-            except asyncio.TimeoutError:
-                self.error(f"Timeout nella connessione {url}")
-                return None
+            if await self._get_rsa_public_key() is not None:
+                url = 'http://' + self._ip_address + '/UserLogin'
+                data = self._get_content_key_iv()
+                headers = {
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
+                    'Origin': 'http://' + self._ip_address,
+                    'Pragma': 'no-cache',
+                    'Referer': 'http://' + self._ip_address + '/login',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+                try:
+                    async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                        await self._async_init_session()
+                        async with self._session.post(url, json=data, headers=headers) as response:
+                            zyxel_json = await response.json()
+                            if response.status == 200:
+                                self._UserLogin = zyxel_json
+                                self.info("UserLogin successfully executed")
+                                set_cookie = response.headers.get('Set-Cookie')
+                                if set_cookie:
+                                    session_cookie = set_cookie.split(';')[0]
+                                    cookie_name, cookie_value = session_cookie.split('=')
+                                    self._cookies = {cookie_name: cookie_value}
+                            else:
+                                msg = f"Request error {url}: {response.status}"
+                                code = 302
+                                raise ZyxelAuthError(msg, code)
+                except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 301
+                    raise ZyxelAuthError(msg, code)
+                except asyncio.TimeoutError:
+                    msg = f"Connection timeout {url}"
+                    code = 300
+                    raise ZyxelAuthError(msg, code)
         return self._UserLogin
 
-    async def _async_get_basic_information(self):
+    async def _get_basic_information(self):
         if self._BasicInformation is None:
             await self._async_init_session()  # Inizializza la sessione se non esiste già
             url = 'http://' + self._ip_address + '/getBasicInformation'
@@ -178,27 +197,30 @@ class ZyXEL:
                     async with self._session.get(url) as response:
                         if response.status == 200:
                             zyxel_json = await response.json()
-                            if zyxel_json.get("result") != "ZCFG_SUCCESS":
-                                self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
-                                # get html in bytes
-                                self.error(str(response.content))
-                                return None
-                            self._BasicInformation = zyxel_json
-                            self.info("Basic Information successfully retrieved")
+                            if zyxel_json.get("result") == "ZCFG_SUCCESS":
+                                self._BasicInformation = zyxel_json
+                                self.info("Basic Information successfully retrieved")
+                            else:
+                                msg = 'Basic information (' + url + ') error: ' + str(zyxel_json)
+                                code = 203
+                                raise ZyxelError(msg, code)
                         else:
-                            self.error(f"Errore nella richiesta {url}: {response.status}")
-                            return None
+                            msg = f"Request error {url}: {response.status}"
+                            code = 202
+                            raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
-                self.error(f"Errore di connessione {url}: {err}")
-                return None
+                msg = f"Connection error {url}: {err}"
+                code = 201
+                raise ZyxelError(msg, code)
             except asyncio.TimeoutError:
-                self.error(f"Timeout nella connessione {url}")
-                return None
+                msg = f"Connection timeout {url}"
+                code = 200
+                raise ZyxelError(msg, code)
         return self._BasicInformation
 
-    async def _async_get_rsa_public_key(self):
+    async def _get_rsa_public_key(self):
         if self._RSAPublicKey is None:
-            await self._async_get_basic_information()
+            await self._get_basic_information()
             url = 'http://' + self._ip_address + '/getRSAPublickKey'
             try:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
@@ -207,22 +229,27 @@ class ZyXEL:
                         if response.status == 200:
                             zyxel_json = await response.json()
                             if zyxel_json.get("result") != "ZCFG_SUCCESS":
-                                self.error('RSA Public Key page (' + url + ') error: ' + str(zyxel_json))
+                                self.error('RSA Public Key (' + url + ') error: ' + str(zyxel_json))
                                 self.error(str(response.content))
-                                return None
-                            self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
-                            self.info("RSAPublicKey successfully retrieved")
+                            else:
+                                self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
+                                self.info("RSAPublicKey successfully retrieved")
                         else:
                             self.error(f"Errore nella richiesta {url}: {response.status}")
-                            return None
             except aiohttp.ClientError as err:
-                self.error(f"Errore di connessione {url}: {err}")
-                return None
+                msg = f"Connection error {url}: {err}"
+                code = 101
+                raise ZyxelError(msg, code)
             except asyncio.TimeoutError:
                 self.error(f"Timeout nella connessione {url}")
-                return None
+                msg = f"Connection timeout {url}"
+                code = 100
+                raise ZyxelError(msg, code)
         return self._RSAPublicKey
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # Data manipulation methods
+    # ------------------------------------------------------------------------------------------------------------------
 
     def _get_content_key_iv(self):
 
@@ -296,15 +323,45 @@ class ZyXEL:
         # Restituisce i dati decrittografati come stringa UTF-8
         return decrypted_data.decode('utf-8')
 
+    # ------------------------------------------------------------------------------------------------------------------
+    # Session related methods
+    # ------------------------------------------------------------------------------------------------------------------
+
     async def _async_init_session(self):
-        """Inizializza la sessione mantenuta."""
+        """ Init session """
         if self._session is None:
             self._session = aiohttp.ClientSession()
             self.debug("Session started")
 
-    async def async_close_session(self):
-        """Chiude la sessione se esiste."""
+    async def _async_close_session(self):
+        """ Close session """
         if self._session:
             await self._session.close()
             self._session = None
             self.debug("Session closed")
+
+
+class ZyxelAuthError(Exception):
+    """Eccezione personalizzata che accetta un messaggio e un codice di errore."""
+
+    def __init__(self, message, code):
+        # Chiama il costruttore della classe base (Exception) con il messaggio di errore
+        super().__init__(message)
+        self.code = code
+
+    def __str__(self):
+        # Ritorna una rappresentazione stringa dell'errore, includendo il codice
+        return f"[Zyxel Authentication Error {self.code}]: {self.args[0]}"
+
+
+class ZyxelError(Exception):
+    """Eccezione personalizzata che accetta un messaggio e un codice di errore."""
+
+    def __init__(self, message, code):
+        # Chiama il costruttore della classe base (Exception) con il messaggio di errore
+        super().__init__(message)
+        self.code = code
+
+    def __str__(self):
+        # Ritorna una rappresentazione stringa dell'errore, includendo il codice
+        return f"[Zyxel Error {self.code}]: {self.args[0]}"

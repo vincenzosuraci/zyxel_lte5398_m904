@@ -1,8 +1,18 @@
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from .const import SENSOR, DOMAIN, DEVICE_MANUFACTURER, CONF_IP_ADDRESS, DEVICE_MODEL, DEVICE_NAME, DEVICE_SW_VERSION, \
-    CONF_USERNAME
+from .const import (
+    SENSOR,
+    DOMAIN,
+    DEVICE_MANUFACTURER,
+    CONF_IP_ADDRESS,
+    DEVICE_MODEL,
+    DEVICE_NAME,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    DEVICE_SW_VERSION
+)
+
 
 try:
     from homeassistant.core import HomeAssistant
@@ -11,53 +21,46 @@ try:
     from homeassistant.helpers.typing import ConfigType
     from homeassistant.helpers import discovery
 
-    async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-        # Legacy setup, required only for configuration.yaml file support
-        return True
-
+    from .zyxel_device import ZyxelDevice
+    from .coordinator import ZyxelCoordinator
 
     async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-
-        # Set up the ZyXEL component from a config entry
-        hass.data[DOMAIN] = config_entry.data
 
         ip_address = config_entry.data[CONF_IP_ADDRESS]
         username = config_entry.data[CONF_USERNAME]
         password = config_entry.data[CONF_PASSWORD]
 
-        hass.data[DOMAIN][config_entry.entry_id] = ZyXEL_HomeAssistant(params={
+        zyxel = ZyxelDevice(params={
             "username": username,
             "password": password,
             "ip_address": ip_address
         })
 
-        manufacturer = DEVICE_MANUFACTURER
-        model = config_entry.data.get(DEVICE_MODEL)
-        name = config_entry.data.get(DEVICE_NAME)
-        sw_version = config_entry.data.get(DEVICE_SW_VERSION)
+        # Inizializza il coordinatore
+        coordinator = ZyxelCoordinator(hass, zyxel)
 
-        # Register the ZyXEL device in the device registry
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=config_entry.entry_id,
-            identifiers={(DOMAIN, ip_address)},
-            manufacturer=manufacturer,
-            name=name,
-            model=model,
-            sw_version=sw_version
-        )
+        # Memorizza il coordinatore nel registro dei dati di Home Assistant
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
-        # Discover and configure the sensor entities
-        hass.async_create_task(
-            discovery.async_load_platform(hass, SENSOR, DOMAIN, {}, config_entry)
-        )
+        # Esegui il primo aggiornamento
+        await coordinator.async_config_entry_first_refresh()
+
+        # Aggiungi i sensori
+        hass.config_entries.async_setup_platforms(config_entry, [SENSOR])
 
         return True
 
 
     async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-        """Remove config entry."""
-        return True
+        """Unload a config entry."""
+        # Rimuove i sensori
+        unload_ok = await hass.config_entries.async_unload_platforms(config_entry, [SENSOR])
+
+        if unload_ok:
+            hass.data[DOMAIN].pop(config_entry.entry_id)
+
+        return unload_ok
 
 except ModuleNotFoundError:
     print("Execution outside the Home Assistant environment")

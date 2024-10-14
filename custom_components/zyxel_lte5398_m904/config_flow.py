@@ -3,7 +3,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, DEVICE_MODEL, DEVICE_SW_VERSION, DEVICE_NAME, DEVICE_MANUFACTURER
-from .zyxel_ha import ZyXEL_HomeAssistant
+from .zyxel_device import ZyxelDevice
 
 
 class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -25,39 +25,35 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if ip_address and username and password:
 
-                zyxel = ZyXEL_HomeAssistant(params={
+                zyxel = ZyxelDevice(params={
                     "username": username,
                     "password": password,
                     "ip_address": ip_address
                 })
 
-                # Prova a ottenere il modello del modem ZyXEL dinamicamente
                 try:
 
-                    model = await zyxel.async_get_model()
-                    sw_version = await zyxel.async_get_sw_version()
-                    name = f"{DEVICE_MANUFACTURER} {model}"
-                    title = name
+                    if await zyxel.test_connection():
 
-                    data = {
-                        CONF_IP_ADDRESS: ip_address,
-                        CONF_USERNAME: username,
-                        CONF_PASSWORD: password,
-                        DEVICE_MODEL: model,
-                        DEVICE_SW_VERSION: sw_version,
-                        DEVICE_NAME: name
-                    }
+                        data = {
+                            CONF_IP_ADDRESS: ip_address,
+                            CONF_USERNAME: username,
+                            CONF_PASSWORD: password
+                        }
 
-                    return self.async_create_entry(
-                        title=title,
-                        data=data
-                    )
+                        return self.async_create_entry(
+                            title=zyxel.get_title(),
+                            data=data
+                        )
+
+                    else:
+                        errors["base"] = "Cannot connect"
 
                 except Exception:
-                    errors["base"] = "cannot_connect"
+                    errors["base"] = "Cannot connect"
 
             else:
-                errors["base"] = "missing_input"
+                errors["base"] = "Missing input"
 
         # Se non ci sono input o ci sono errori, mostra il form
         data_schema = vol.Schema({

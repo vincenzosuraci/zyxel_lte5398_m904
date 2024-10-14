@@ -1,252 +1,158 @@
 import logging
-import requests
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntityDescription, SensorStateClass, SensorEntity
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.components.sensor import (
-    DOMAIN as SENSOR_DOMAIN,
-    SensorDeviceClass
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.sensor import SensorDeviceClass
 from .const import *
-from .zyxel_ha import ZyXEL_HomeAssistant
+from .coordinator import ZyxelCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ZyXEL_Sensor(SensorEntity):
-    """Rappresenta un sensore di stato del modem ZyXEL."""
+class ZyxelSensor(CoordinatorEntity, SensorEntity):
 
-    def __init__(self,
-        hass,
-        zyxel: ZyXEL_HomeAssistant,
-        name: str,
-        props = {}
-    ):
+    def __init__(self, coordinator: ZyxelCoordinator, device_info: DeviceInfo, description: SensorEntityDescription):
         """Inizializza il sensore."""
-        self._zyxel = zyxel
-        self._hass = hass
-        self._value = None
+        super().__init__(coordinator)
 
-        self._name = name
-        self._device_class = props.get("device_class")
-        self._last_reset = props.get("last_reset")
-        self._native_unit_of_measurement = props.get("native_unit_of_measurement")
-        self._native_value = props.get("native_value")
-        self._options = props.get("options", [])
-        self._state_class = props.get("state_class")
-        self._suggested_display_precision = props.get("suggested_display_precision")
-        self._suggested_unit_of_measurement = props.get("suggested_unit_of_measurement")
-        self._icon = props.get("icon")
-        self._device_info = props.get("device_info")
-
-        _LOGGER.debug(self._device_info)
-
-        # Imposta le informazioni sul dispositivo
-        self._attr_native_unit_of_measurement = self._native_unit_of_measurement
-        self._attr_native_value = self._value
-        self._attr_name = self._name
-        self._attr_device_info = self._device_info
-        self._attr_unique_id = ".".join([
-            SENSOR_DOMAIN,
-            self._device_info.get("manufacturer"),
-            zyxel.ip_address,
-            self.name
-        ])
-        self._attr_device_info = DeviceInfo(
-            identifiers=self._device_info.get("identifiers")
-        )
-
-    @property
-    def name(self):
-        """Restituisce il nome del sensore."""
-        return self._name
+        self._description = description
+        self._attr_name = description.name
+        self._attr_unique_id = f"{device_info.name}_{description.key}"
+        self._attr_icon = description.icon
+        self._attr_unit_of_measurement = description.unit_of_measurement
+        self._attr_device_info = device_info
+        self._attr_icon = description.icon
 
     @property
     def state(self):
-        """Restituisce lo stato corrente del sensore."""
-        return self._value
+        """Ritorna lo stato attuale del sensore."""
+        return self.coordinator.data.get(self._description.name)
 
     @property
-    def device_class(self):
-        """Imposta il tipo di dispositivo (facoltativo)."""
-        return self._device_class
-
-    @property
-    def last_reset(self):
-        """Imposta il timestamp dell'ultimo reset (facoltativo)."""
-        return self._last_reset
-
-    @property
-    def native_unit_of_measurement(self):
-        """Imposta l'unità di misura nativa."""
-        return self._native_unit_of_measurement
-
-    @property
-    def native_value(self):
-        """Ritorna il valore attuale del sensore nel suo formato nativo."""
-        return self._value
-
-    @property
-    def options(self):
-        """Imposta le opzioni disponibili per il sensore (facoltativo)."""
-        return self._options  # Opzioni personalizzate per il sensore
-
-    @property
-    def state_class(self):
-        """Imposta la classe di stato del sensore."""
-        return self._state_class
-
-    @property
-    def suggested_display_precision(self):
-        """Suggerisce la precisione per la visualizzazione del valore del sensore (facoltativo)."""
-        return self._suggested_display_precision
-
-    @property
-    def suggested_unit_of_measurement(self):
-        """Suggerisce un'unità di misura personalizzata (facoltativo)."""
-        return self._suggested_unit_of_measurement
-
-    @property
-    def icon(self):
-        """Icona (facoltativo)."""
-        return self._icon
+    def available(self):
+        """Controlla se il sensore è disponibile."""
+        return self.coordinator.last_update_success
 
     async def async_update(self):
-        try:
-            """Aggiorna lo stato del sensore con i dati del modem."""
-            cell_status = await self._zyxel.async_get_cell_status()
-            if cell_status is not None:
-                if self._name == ZYXEL_SENSOR_RSRP:
-                    self._value = int(cell_status["INTF_RSRP"])
-                elif self._name == ZYXEL_SENSOR_RSRQ:
-                    self._value = int(cell_status["INTF_RSRQ"])
-                elif self._name == ZYXEL_SENSOR_SINR:
-                    self._value = int(cell_status["INTF_SINR"])
-                elif self._name == ZYXEL_SENSOR_ACCESS_TECH:
-                    self._value = int(cell_status["INTF_Current_Access_Technology"])
-                elif self._name == ZYXEL_SENSOR_CELL_ID:
-                    self._value = int(cell_status["INTF_Cell_ID"])
-                elif self._name == ZYXEL_SENSOR_ENB:
-                    self._value = int(cell_status["INTF_Cell_ID"]) // 256
-                elif self._name == ZYXEL_SENSOR_PHY_CELL_ID:
-                    self._value = int(cell_status["INTF_PhyCell_ID"])
-                elif self._name == ZYXEL_SENSOR_MAIN_BAND:
-                    ul = 5 * (int(cell_status["INTF_Uplink_Bandwidth"]) - 1)
-                    dl = 5 * (int(cell_status["INTF_Downlink_Bandwidth"]) - 1)
-                    self._value = cell_status["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)"
-                elif self._name == ZYXEL_SENSOR_CA_BANDS:
-                    CA_Bands = []
-                    for scc in cell_status["SCC_Info"]:
-                        if scc["Enable"]:
-                            CA_Bands.append(scc["Band"])
-                    self._value = ' '.join(CA_Bands)
-        except Exception as e:
-            pass
+        """Aggiorna manualmente lo stato del sensore."""
+        await self.coordinator.async_request_refresh()
+
+    async def async_added_to_hass(self):
+        """Iscrive il sensore al coordinatore per gli aggiornamenti."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
 
 
-async def get_sensors(hass, zyxel: ZyXEL_HomeAssistant, device_info):
+async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 
     sensors = []
 
-    cell_status = await zyxel.async_get_cell_status()
+    data = await coordinator.zyxel.fetch_data()
 
-    if cell_status is not None:
+    if data is not None:
 
-        if "INTF_RSRP" in cell_status:
-            props = {
-                "icon": "mdi:signal",
-                "device_info": device_info,
-                "suggested_display_precision": 0,
-                "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_RSRP, props))
-
-        if "INTF_RSRQ" in cell_status:
-            props = {
-                "icon": "mdi:signal",
-                "device_info": device_info,
-                "suggested_display_precision": 0,
-                "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_RSRQ, props))
-
-        if "INTF_SINR" in cell_status:
-            props = {
-                "icon": "mdi:signal",
-                "device_info": device_info,
-                "suggested_display_precision": 0,
-                "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_SINR, props))
-
-        if "INTF_Current_Access_Technology" in cell_status:
-            props = {
-                "icon": "mdi:radio-tower",
-                "device_info": device_info
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_ACCESS_TECH, props))
-
-        if "INTF_Cell_ID" in cell_status:
-            props = {
-                "icon": "mdi:radio-tower",
-                "device_info": device_info
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_ENB, props))
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_CELL_ID, props))
-
-        if "INTF_PhyCell_ID" in cell_status:
-            props = {
-                "icon": "mdi:radio-tower",
-                "device_info": device_info
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_PHY_CELL_ID, props))
-
-        if ("INTF_Uplink_Bandwidth" in cell_status
-                and "INTF_Downlink_Bandwidth" in cell_status
-                and "INTF_Current_Band" in cell_status):
-            props = {
-                "icon": "mdi:radio-tower",
-                "device_info": device_info
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_MAIN_BAND, props))
-
-        if "SCC_Info" in cell_status:
-            props = {
-                "icon": "mdi:radio-tower",
-                "device_info": device_info
-            }
-            sensors.append(ZyXEL_Sensor(hass, zyxel, ZYXEL_SENSOR_CA_BANDS, props))
+        if ZYXEL_SENSOR_RSRP in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_RSRP).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_RSRP,
+                icon="mdi:signal",
+                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                state_class=SensorStateClass.MEASUREMENT,
+                native_value=data[ZYXEL_SENSOR_RSRP]
+            )))
+        if ZYXEL_SENSOR_RSRQ in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_RSRQ).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_RSRQ,
+                icon="mdi:signal",
+                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                state_class=SensorStateClass.MEASUREMENT,
+                native_value=data[ZYXEL_SENSOR_RSRQ]
+            )))
+        if ZYXEL_SENSOR_SINR in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_SINR).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_SINR,
+                icon="mdi:signal",
+                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                state_class=SensorStateClass.MEASUREMENT,
+                native_value=data[ZYXEL_SENSOR_SINR]
+            )))
+        if ZYXEL_SENSOR_ACCESS_TECH in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_ACCESS_TECH).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_ACCESS_TECH,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_ACCESS_TECH]
+            )))
+        if ZYXEL_SENSOR_CELL_ID in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_CELL_ID).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_CELL_ID,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_CELL_ID]
+            )))
+        if ZYXEL_SENSOR_PHY_CELL_ID in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_PHY_CELL_ID).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_PHY_CELL_ID,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_PHY_CELL_ID]
+            )))
+        if ZYXEL_SENSOR_ENB in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_ENB).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_ENB,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_ENB]
+            )))
+        if ZYXEL_SENSOR_MAIN_BAND in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_MAIN_BAND).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_MAIN_BAND,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_MAIN_BAND]
+            )))
+        if ZYXEL_SENSOR_CA_BANDS in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_CA_BANDS).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_CA_BANDS,
+                state_class=SensorStateClass.MEASUREMENT,
+                icon="mdi:radio-tower",
+                native_value=data[ZYXEL_SENSOR_CA_BANDS]
+            )))
 
     return sensors
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Configura i sensori da una config entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Recupera l'entry di configurazione per il dominio
-    config_entry = hass.config_entries.async_entries(DOMAIN)[0]
+    device_name = await coordinator.zyxel.get_name()
+    device_model = await coordinator.zyxel.get_model()
+    device_sw_version = await coordinator.zyxel.get_sw_version()
 
-    # Creo l'oggetto ZyXEL
-    zyxel = ZyXEL_HomeAssistant(params={
-        "username": config_entry.data.get(CONF_USERNAME),
-        "password": config_entry.data.get(CONF_PASSWORD),
-        "ip_address": config_entry.data.get(CONF_IP_ADDRESS)
-    })
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},  # Identificatore del dispositivo nel Device Registry
+        name=device_name,
+        manufacturer=DEVICE_MANUFACTURER,
+        model=device_model,  # Modello del modem (aggiorna con il modello corretto)
+        sw_version=device_sw_version,  # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
+        via_device=(DOMAIN, entry.entry_id),
+    )
 
-    device_info = {
-        "identifiers": {(DOMAIN, config_entry.data[CONF_IP_ADDRESS])},  # Associa il dispositivo all'entry ID
-        "name": config_entry.data.get(DEVICE_NAME),
-        "model": config_entry.data.get(DEVICE_MODEL),
-        "manufacturer": DEVICE_MANUFACTURER,
-    }
-
-    _LOGGER.debug(config_entry.data)
-
-    # Recupero dei sensori in base ai dati dello ZyXEL
-    sensors = await get_sensors(hass, zyxel, device_info)
-
-    _LOGGER.debug(sensors)
+    sensors = await get_sensors(coordinator, device_info)
 
     async_add_entities(sensors)
+

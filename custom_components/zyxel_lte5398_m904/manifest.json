@@ -14,8 +14,9 @@
     "aiohttp",
     "pycryptodome"
   ],
-  "iot_class": "cloud_polling",
+  "iot_class": "local_polling",
   "config_flow": true,
+  "single_config_entry": true,
   "branding": {
     "logo": "logo.png",
     "icon": "icon.png"
