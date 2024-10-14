@@ -47,10 +47,10 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
 
                     else:
-                        errors["base"] = "Cannot connect"
+                        errors["base"] = "Connection test failed"
 
-                except Exception:
-                    errors["base"] = "Cannot connect"
+                except Exception as err:
+                    errors["base"] = f"Cannot connect {err}"
 
             else:
                 errors["base"] = "Missing input"

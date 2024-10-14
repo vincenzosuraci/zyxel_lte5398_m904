@@ -31,8 +31,8 @@ if __name__ == "__main__":
 
     else:
 
-        from custom_components.zyxel_lte5398_m904.zyxel import ZyXEL
-        zyxel = ZyXEL(
+        from custom_components.zyxel_lte5398_m904.zyxel import Zyxel
+        zyxel = Zyxel(
             params=params
         )
 
