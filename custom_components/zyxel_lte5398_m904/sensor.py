@@ -91,42 +91,36 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_ACCESS_TECH).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_ACCESS_TECH,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_CELL_ID in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_CELL_ID).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_CELL_ID,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_PHY_CELL_ID in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_PHY_CELL_ID).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_PHY_CELL_ID,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_ENB in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_ENB).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_ENB,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_MAIN_BAND in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_MAIN_BAND).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_MAIN_BAND,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_CA_BANDS in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_CA_BANDS).lower().replace(" ", "_"),
                 name=ZYXEL_SENSOR_CA_BANDS,
-                state_class=SensorStateClass.MEASUREMENT,
                 icon="mdi:radio-tower"
             )))
 
