@@ -5,8 +5,6 @@ import logging
 
 import async_timeout
 
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,

@@ -13,7 +13,6 @@ from .const import (
     DEVICE_SW_VERSION
 )
 
-
 try:
     from homeassistant.core import HomeAssistant
     from homeassistant.config_entries import ConfigEntry
@@ -38,8 +37,7 @@ try:
         coordinator = ZyxelCoordinator(hass, zyxel)
 
         # Memorizza il coordinatore nel registro dei dati di Home Assistant
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN][config_entry.entry_id] = coordinator
+        hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = coordinator
 
         # Esegui il primo aggiornamento
         await coordinator.async_config_entry_first_refresh()
@@ -52,14 +50,10 @@ try:
 
 
     async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-        """Unload a config entry."""
-        # Rimuove i sensori
-        unload_ok = await hass.config_entries.async_unload_platforms(config_entry, [SENSOR])
+        await hass.config_entries.async_forward_entry_unload(config_entry, SENSOR)
+        hass.data[DOMAIN].pop(config_entry.entry_id)
 
-        if unload_ok:
-            hass.data[DOMAIN].pop(config_entry.entry_id)
-
-        return unload_ok
+        return True
 
 except ModuleNotFoundError:
     print("Execution outside the Home Assistant environment")

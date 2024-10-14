@@ -1,6 +1,7 @@
 import logging
 from homeassistant.components.sensor import SensorEntityDescription, SensorStateClass, SensorEntity
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorDeviceClass
@@ -135,21 +136,34 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
     return sensors
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(hass, config_entry, async_add_entities):
     """Configura i sensori da una config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    zyxel = coordinator.zyxel
 
-    device_name = await coordinator.zyxel.get_name()
-    device_model = await coordinator.zyxel.get_model()
-    device_sw_version = await coordinator.zyxel.get_sw_version()
+    device_manufacturer = DEVICE_MANUFACTURER
+    device_name = await zyxel.get_name()
+    device_model = await zyxel.get_model()
+    device_sw_version = await zyxel.get_sw_version()
+    device_id = await zyxel.get_id()
+
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, device_id)},  # Usa un identificativo unico per il router
+        manufacturer=device_manufacturer,
+        model=device_model,
+        name=device_name,
+        sw_version=device_sw_version,
+    )
 
     device_info = DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},  # Identificatore del dispositivo nel Device Registry
+        identifiers={(DOMAIN, device_id)},
         name=device_name,
-        manufacturer=DEVICE_MANUFACTURER,
+        manufacturer=device_name,
         model=device_model,  # Modello del modem (aggiorna con il modello corretto)
         sw_version=device_sw_version,  # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
-        via_device=(DOMAIN, entry.entry_id),
+        via_device=(DOMAIN, config_entry.entry_id),
     )
 
     sensors = await get_sensors(coordinator, device_info)

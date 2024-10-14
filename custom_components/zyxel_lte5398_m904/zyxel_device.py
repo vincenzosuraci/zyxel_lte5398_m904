@@ -7,6 +7,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ZyxelDevice(Zyxel):
+
     def debug(self, msg):
         _LOGGER.debug(msg)
 
@@ -18,6 +19,11 @@ class ZyxelDevice(Zyxel):
 
     def error(self, msg):
         _LOGGER.error(msg)
+
+    async def get_id(self):
+        name = await self.get_name()
+        id_str = f"{name} {self.ip_address}"
+        return id_str.lower().replace(" ","_").replace(".","_")
 
     async def get_name(self):
         model = await self.get_model()
