@@ -2,7 +2,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 
-Monitor the ZyXEL LTE5398 M904 router.
+Monitor the ZyXEL LTE5398 M904 modem router.
 Login credentials are required.
 
 # Compatibility
@@ -13,7 +13,11 @@ Tested with:
 
 Should be compatible with similar models.
 
-# HACS version
+# HACS version (suggested)
+## Installation
+- add ZyXEL LTE5398 M904 as a [custom repository](https://hacs.xyz/docs/faq/custom_repositories/)
+- in HACS, search for `ZyXEL LTE5398 M904` and install the latest release
+- in Home Assistant, add the `ZyXEL LTE5398 M904` integration, insert the `ip-address`, `username` and `password` and follow the instructions  
 
 # Stand-alone version
 
