@@ -17,6 +17,7 @@ from .const import (
 try:
     from homeassistant.core import HomeAssistant
     from homeassistant.config_entries import ConfigEntry
+    from .sensor import async_setup_entry as async_setup_sensors
 
     from .zyxel_device import ZyxelDevice
     from .coordinator import ZyxelCoordinator
@@ -44,7 +45,7 @@ try:
         await coordinator.async_config_entry_first_refresh()
 
         # Aggiungi i sensori
-        hass.config_entries.async_setup_platforms(config_entry, [SENSOR])
+        await async_setup_sensors(hass, config_entry, async_add_entities)
 
         return True
 
