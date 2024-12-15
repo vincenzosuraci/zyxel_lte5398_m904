@@ -73,6 +73,83 @@ class Zyxel:
         data = await self.fetch_data()
         return data is not None
 
+    async def reboot(self):
+
+        if self.getBasicInformation() is None:
+            return None
+
+        if self.getRSAPublickKey() is None:
+            return None
+
+        if self._UserLogin is None:
+            self.getUserLogin()
+
+        if self._UserLogin is not None:
+            url = "http://" + self.ip_address + "/cgi-bin/Reboot"
+
+            # session keeping cookies
+            session = self.get_session()
+
+            headers = {
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                'CSRFToken': self._sessionkey,
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Host': self.ip_address,
+                'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
+                'Origin': 'http://' + self.ip_address,
+                'Pragma': 'no-cache',
+                'Referer': 'http://' + self.ip_address + '/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+
+            # Effettua la richiesta POST
+            response = session.post(
+                url,
+                headers=headers
+            )
+
+            # get http status code
+            http_status_code = response.status_code
+
+            # check response is okay
+            if http_status_code != 200:
+                self.error("Reboot page (" + url + ") error: " + str(http_status_code))
+                # get html in bytes
+                self.debug(str(response.content))
+                return None
+
+            json_str = response.text
+
+            zyxel_json = json_lib.loads(json_str)
+
+            self.info(zyxel_json)
+
+            decoded_zyxel_str = self.dxc(
+                zyxel_json.get("content"),
+                self.aes_key,
+                zyxel_json.get("iv")
+            )
+
+            decoded_zyxel_json = json_lib.loads(decoded_zyxel_str)
+
+            reboot_result = decoded_zyxel_json.get("result")
+
+            if reboot_result == self.ZCFG_SUCCESS:
+                return True
+
+        return False
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Do methods
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def _do_reboot(self):
+
+
     # ------------------------------------------------------------------------------------------------------------------
     # Get methods
     # ------------------------------------------------------------------------------------------------------------------

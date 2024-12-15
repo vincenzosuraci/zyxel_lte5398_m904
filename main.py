@@ -18,7 +18,7 @@ if __name__ == "__main__":
         "ip_address": os.getenv("ADDR")
     }
 
-    stand_alone = False
+    stand_alone = True
 
     if stand_alone:
 
@@ -27,7 +27,9 @@ if __name__ == "__main__":
             params=params
         )
 
-        zyxel.update_cell_status_data()
+        # zyxel.update_cell_status_data()
+
+        zyxel.reboot()
 
     else:
 

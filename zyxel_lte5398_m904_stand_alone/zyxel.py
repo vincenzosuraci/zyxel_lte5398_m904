@@ -23,6 +23,8 @@ class ZyXEL_LTE5398_M904_Crawler:
 
     MAX_NUM_RETRIES = 1
 
+    ZCFG_SUCCESS = "ZCFG_SUCCESS"
+
     def __init__(
         self,
         params = {}
@@ -49,6 +51,7 @@ class ZyXEL_LTE5398_M904_Crawler:
         self._RSAPublicKey = None
         self._UserLogin = None
         self._CellStatus = None
+        self._sessionkey = None
 
         self._session = None
 
@@ -106,6 +109,77 @@ class ZyXEL_LTE5398_M904_Crawler:
             # session keeping cookies
             self._session = requests.Session()
         return self.session
+
+    def reboot(self):
+
+        if self.getBasicInformation() is None:
+            return None
+
+        if self.getRSAPublickKey() is None:
+            return None
+
+        if self._UserLogin is None:
+            self.getUserLogin()
+
+        if self._UserLogin is not None:
+            url = "http://" + self.ip_address + "/cgi-bin/Reboot"
+
+            # session keeping cookies
+            session = self.get_session()
+
+            headers = {
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+                'CSRFToken': self._sessionkey,
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Host': self.ip_address,
+                'If-Modified-Since': 'Thu, 01 Jun 1970 00:00:00 GMT',
+                'Origin': 'http://' + self.ip_address,
+                'Pragma': 'no-cache',
+                'Referer': 'http://' + self.ip_address + '/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+
+            # Effettua la richiesta POST
+            response = session.post(
+                url,
+                headers=headers
+            )
+
+            # get http status code
+            http_status_code = response.status_code
+
+            # check response is okay
+            if http_status_code != 200:
+                self.error("Reboot page (" + url + ") error: " + str(http_status_code))
+                # get html in bytes
+                self.debug(str(response.content))
+                return None
+
+            json_str = response.text
+
+            zyxel_json = json_lib.loads(json_str)
+
+            self.info(zyxel_json)
+
+            decoded_zyxel_str = self.dxc(
+                zyxel_json.get("content"),
+                self.aes_key,
+                zyxel_json.get("iv")
+            )
+
+            decoded_zyxel_json = json_lib.loads(decoded_zyxel_str)
+
+            reboot_result = decoded_zyxel_json.get("result")
+
+            if reboot_result == self.ZCFG_SUCCESS:
+                return True
+
+        return False
+
 
     def update_cell_status_data(self):
 
@@ -268,8 +342,6 @@ class ZyXEL_LTE5398_M904_Crawler:
 
             zyxel_json = json_lib.loads(json_str)
 
-            #self.info(zyxel_json)
-
             decoded_zyxel_str = self.dxc(
                 zyxel_json.get("content"),
                 self.aes_key,
@@ -278,7 +350,7 @@ class ZyXEL_LTE5398_M904_Crawler:
 
             decoded_zyxel_json = json_lib.loads(decoded_zyxel_str )
 
-            if decoded_zyxel_json.get("result") != "ZCFG_SUCCESS":
+            if decoded_zyxel_json.get("result") != self.ZCFG_SUCCESS:
                 self.error('Cell Status page (' + url + ') error: ' + str(zyxel_json))
                 # get html in bytes
                 self.error(str(response.content))
@@ -344,6 +416,16 @@ class ZyXEL_LTE5398_M904_Crawler:
 
         self._UserLogin = json_lib.loads(json_str)
 
+        user_login_str = self.dxc(
+            self._UserLogin['content'],
+            self._aes_key,
+            self._UserLogin['iv']
+        )
+
+        user_login_json = json_lib.loads(user_login_str)
+
+        self._sessionkey = user_login_json.get('sessionkey')
+
         return self._UserLogin
 
     def getBasicInformation(self):
@@ -373,8 +455,8 @@ class ZyXEL_LTE5398_M904_Crawler:
             zyxel_json = json_lib.loads(json_str)
 
             # check response is successful
-            if zyxel_json.get("result") != "ZCFG_SUCCESS":
-                self.error('basic information page (' + url + ') error: ' + str(zyxel_json))
+            if zyxel_json.get("result") != self.ZCFG_SUCCESS:
+                self.error("basic information page (" + url + ") error: " + str(zyxel_json))
                 # get html in bytes
                 self.error(str(response.content))
                 return None
@@ -408,8 +490,8 @@ class ZyXEL_LTE5398_M904_Crawler:
 
             zyxel_json = json_lib.loads(json_str)
 
-            if zyxel_json.get("result") != "ZCFG_SUCCESS":
-                self.error('RSA Public Key page (' + url + ') error: ' + str(zyxel_json))
+            if zyxel_json.get("result") != self.ZCFG_SUCCESS:
+                self.error("RSA Public Key page (" + url + ") error: " + str(zyxel_json))
                 # get html in bytes
                 self.error(str(response.content))
                 return None
