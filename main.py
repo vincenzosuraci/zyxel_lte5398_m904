@@ -18,7 +18,7 @@ if __name__ == "__main__":
         "ip_address": os.getenv("ADDR")
     }
 
-    stand_alone = True
+    stand_alone = False
 
     if stand_alone:
 
@@ -39,12 +39,11 @@ if __name__ == "__main__":
         )
 
         import asyncio
-        asyncio.run(zyxel.fetch_data())
+        asyncio.run(zyxel.reboot())
 
-        import time
-        time.sleep(5)
-
-        asyncio.run(zyxel.fetch_data())
+        #import time
+        #time.sleep(5)
+        #asyncio.run(zyxel.fetch_data())
 
 
 

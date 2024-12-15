@@ -25,6 +25,9 @@ class Zyxel:
     # Minimo tempo che deve trascorre tra due interrogazioni successive al router
     MIN_INTERVAL_S = 2
 
+    # Zyxel Config Success Message
+    ZCFG_SUCCESS = "ZCFG_SUCCESS"
+
     def __init__(
         self,
         params = {}
@@ -38,6 +41,7 @@ class Zyxel:
         self._UserLogin = None
         self._CellStatus = None
         self._CellStatusTimestamp = None
+        self._sessionkey = None
 
         self._session = None
         self._cookies = None
@@ -73,23 +77,15 @@ class Zyxel:
         data = await self.fetch_data()
         return data is not None
 
+    # ------------------------------------------------------------------------------------------------------------------
+    #
+    # Reboot
+    #
+    # ------------------------------------------------------------------------------------------------------------------
+
     async def reboot(self):
-
-        if self.getBasicInformation() is None:
-            return None
-
-        if self.getRSAPublickKey() is None:
-            return None
-
-        if self._UserLogin is None:
-            self.getUserLogin()
-
-        if self._UserLogin is not None:
+        if await self._get_user_login() is not None:
             url = "http://" + self.ip_address + "/cgi-bin/Reboot"
-
-            # session keeping cookies
-            session = self.get_session()
-
             headers = {
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
                 'Accept-Encoding': 'gzip, deflate',
@@ -105,49 +101,35 @@ class Zyxel:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
                 'X-Requested-With': 'XMLHttpRequest',
             }
-
-            # Effettua la richiesta POST
-            response = session.post(
-                url,
-                headers=headers
-            )
-
-            # get http status code
-            http_status_code = response.status_code
-
-            # check response is okay
-            if http_status_code != 200:
-                self.error("Reboot page (" + url + ") error: " + str(http_status_code))
-                # get html in bytes
-                self.debug(str(response.content))
-                return None
-
-            json_str = response.text
-
-            zyxel_json = json_lib.loads(json_str)
-
-            self.info(zyxel_json)
-
-            decoded_zyxel_str = self.dxc(
-                zyxel_json.get("content"),
-                self.aes_key,
-                zyxel_json.get("iv")
-            )
-
-            decoded_zyxel_json = json_lib.loads(decoded_zyxel_str)
-
-            reboot_result = decoded_zyxel_json.get("result")
-
-            if reboot_result == self.ZCFG_SUCCESS:
-                return True
-
+            try:
+                async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                    await self._async_init_session()
+                    async with self._session.post(url, headers=headers, cookies=self._cookies) as response:
+                        zyxel_json = await response.json()
+                        await self._async_close_session()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            reboot_result = decoded_zyxel_json.get("result")
+                            if reboot_result == self.ZCFG_SUCCESS:
+                                return True
+                        else:
+                            msg = f"Request error {url}: {response.status}"
+                            code = 502
+                            raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                msg = f"Connection error {url}: {err}"
+                code = 501
+                raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 500
+                raise ZyxelError(msg, code)
         return False
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Do methods
-    # ------------------------------------------------------------------------------------------------------------------
-
-    async def _do_reboot(self):
 
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -187,7 +169,7 @@ class Zyxel:
                                     zyxel_json.get("iv")
                                 )
                                 decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                                if decoded_zyxel_json.get("result") == "ZCFG_SUCCESS":
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
                                     cell_status_data = decoded_zyxel_json
                                 else:
                                     msg = 'Cell Status (' + url + ') error: ' + str(zyxel_json)
@@ -274,7 +256,7 @@ class Zyxel:
                     async with self._session.get(url) as response:
                         if response.status == 200:
                             zyxel_json = await response.json()
-                            if zyxel_json.get("result") == "ZCFG_SUCCESS":
+                            if zyxel_json.get("result") == self.ZCFG_SUCCESS:
                                 self._BasicInformation = zyxel_json
                                 self.info("Basic Information successfully retrieved")
                             else:
@@ -305,7 +287,7 @@ class Zyxel:
                     async with self._session.get(url) as response:
                         if response.status == 200:
                             zyxel_json = await response.json()
-                            if zyxel_json.get("result") != "ZCFG_SUCCESS":
+                            if zyxel_json.get("result") != self.ZCFG_SUCCESS:
                                 self.error('RSA Public Key (' + url + ') error: ' + str(zyxel_json))
                                 self.error(str(response.content))
                             else:

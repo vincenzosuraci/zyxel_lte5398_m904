@@ -1,5 +1,5 @@
 import logging
-from homeassistant.components.button import ButtonEntityDescription
+from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -14,7 +14,6 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
     def __init__(self, coordinator: ZyxelCoordinator, device_info: DeviceInfo, description: ButtonEntityDescription):
         """Inizializza il sensore."""
         super().__init__(coordinator)
-
         self._description = description
         self._attr_device_class = description.device_class
         self._attr_suggested_display_precision = description.suggested_display_precision
@@ -24,28 +23,26 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         self._attr_device_info = device_info
         self._attr_icon = description.icon
 
-    def press(self):
+    async def async_press(self):
         """Esegue l'azione di reboot."""
+        notification_title = "Riavvio " + DEVICE_MANUFACTURER
+        notification_message = None
         try:
             # Accedi al dispositivo tramite il coordinatore
-            if self.coordinator.zyxel.reboot():
-
-
-            # Notifica l'utente
-            self.hass.components.persistent_notification.create(
-                "Reboot avviato con successo.", title="Reboot Device"
-            )
+            if await self.coordinator.zyxel.reboot():
+                notification_message += "Reboot avviato con successo."
+            else:
+                notification_message += "Errore durante il reboot"
         except Exception as e:
-            # Gestisci eventuali errori
-            self.hass.components.persistent_notification.create(
-                f"Errore durante il reboot: {e}", title="Errore Reboot"
-            )
+            notification_message += f"Errore durante il reboot: {e}"
+        # Notifica l'utente
+        self.hass.components.persistent_notification.create(
+            notification_message, title=notification_title
+        )
 
 
 async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
-
     buttons = []
-
     # Reboot button
     buttons.append(ZyxelButton(coordinator, device_info, ButtonEntityDescription(
         key=str(ZYXEL_BUTTON_REBOOT).lower().replace(" ", "_"),
@@ -53,7 +50,6 @@ async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
         icon="mdi:restart",
         device_class="restart",
     )))
-
     return buttons
 
 

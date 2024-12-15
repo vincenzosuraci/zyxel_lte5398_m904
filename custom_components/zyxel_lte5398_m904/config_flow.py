@@ -2,7 +2,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD, DEVICE_MODEL, DEVICE_SW_VERSION, DEVICE_NAME, DEVICE_MANUFACTURER
+from .const import DOMAIN, CONF_IP_ADDRESS, CONF_USERNAME, CONF_PASSWORD
 from .zyxel_device import ZyxelDevice
 
 
@@ -26,9 +26,9 @@ class ZyXEL_LTE5398_M904_ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if ip_address and username and password:
 
                 zyxel = ZyxelDevice(params={
-                    "username": username,
-                    "password": password,
-                    "ip_address": ip_address
+                    CONF_USERNAME: username,
+                    CONF_PASSWORD: password,
+                    CONF_IP_ADDRESS: ip_address
                 })
 
                 try:
