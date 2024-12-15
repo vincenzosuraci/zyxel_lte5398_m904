@@ -16,12 +16,10 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         super().__init__(coordinator)
         self._description = description
         self._attr_device_class = description.device_class
-        self._attr_suggested_display_precision = description.suggested_display_precision
         self._attr_name = description.name
         self._attr_unique_id = f"{device_info["name"]}_{description.key}"
         self._attr_icon = description.icon
         self._attr_device_info = device_info
-        self._attr_icon = description.icon
 
     async def async_press(self):
         """Esegue l'azione di reboot."""

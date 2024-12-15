@@ -26,7 +26,6 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = description.icon
         self._attr_unit_of_measurement = description.unit_of_measurement
         self._attr_device_info = device_info
-        self._attr_icon = description.icon
 
     @property
     def state(self):
