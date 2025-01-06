@@ -5,6 +5,7 @@ import base64
 import os
 import time
 import json as JSON
+from datetime import datetime
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import AES
@@ -39,8 +40,10 @@ class Zyxel:
         self._BasicInformation = None
         self._RSAPublicKey = None
         self._UserLogin = None
-        self._CellStatus = None
-        self._CellStatusTimestamp = None
+        self._cellwan_status = None
+        self._cellwan_sim = None
+        self._cellwan_sms = None
+        self._cellwan_status_timestamp = None
         self._sessionkey = None
 
         self._session = None
@@ -71,11 +74,23 @@ class Zyxel:
         return basic_information.get("SoftwareVersion")
 
     async def fetch_data(self):
-        return await self._get_cell_status()
+        return await self._get_cellwan_status()
 
     async def test_connection(self):
         data = await self.fetch_data()
         return data is not None
+
+    # ------------------------------------------------------------------------------------------------------------------
+    #
+    # Retrieve (SMS) Messages
+    #
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def retrieve_sim_info(self):
+        return await self._get_cellwan_sim()
+
+    async def retrieve_sms_messages(self):
+        return await self._get_cellwan_sms()
 
     # ------------------------------------------------------------------------------------------------------------------
     #
@@ -136,15 +151,168 @@ class Zyxel:
     # Get methods
     # ------------------------------------------------------------------------------------------------------------------
 
-    async def _get_cell_status(self, num_retries=MAX_NUM_RETRIES):
+    async def _get_cellwan_sms(self, num_retries=MAX_NUM_RETRIES):
 
-        if self._CellStatusTimestamp is None or time.time() > self._CellStatusTimestamp + self.MIN_INTERVAL_S:
+        if await self._get_user_login() is not None:
 
-            self._CellStatusTimestamp = time.time()
+            cellwan_sms_data = None
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_sms"
+            headers = {
+                "Accept": 'application/json, text/javascript, */*; q=0.01',
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+            try:
+                async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                    await self._async_init_session()
+                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                cellwan_sms_data = decoded_zyxel_json
+                            else:
+                                msg = 'Cell WAN SMS (' + url + ') error: ' + str(zyxel_json)
+                                code = 703
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            if num_retries > 0:
+                                self._UserLogin = None
+                                await self._async_close_session()
+                                cellwan_sms_data = await self._get_cellwan_sms(num_retries - 1)
+                            else:
+                                msg = f"Request error {url}: {response.status}"
+                                code = 702
+                                raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 701
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 700
+                raise ZyxelError(msg, code)
+
+            if cellwan_sms_data is not None:
+                cellwan_sms_data_object = cellwan_sms_data.get("Object")
+                if cellwan_sms_data_object is not None:
+                    self._cellwan_sms = cellwan_sms_data_object[0]
+                    SMS_UsedSpace = self._cellwan_sms.get("SMS_UsedSpace")
+                    SMS_TotalSpace = self._cellwan_sms.get("SMS_TotalSpace")
+                    cellwan_sms_inbox = self._cellwan_sms.get("SMS_Inbox")
+                    if cellwan_sms_inbox is not None:
+                        for inbox_sms in cellwan_sms_inbox:
+                            #self.debug(inbox_sms)
+
+                            # SMS ObjIndex
+                            inbox_sms_obj_index = inbox_sms.get("ObjIndex")
+
+                            # SMS From
+                            inbox_sms_encoded_from = inbox_sms.get("From")
+                            inbox_sms_from = ''.join(chr(int(inbox_sms_encoded_from[i:i+2], 16)) for i in range(0, len(inbox_sms_encoded_from), 2))
+
+                            # SMS TimeStamp
+                            inbox_sms_timestamp = inbox_sms.get("TimeStamp")
+                            inbox_sms_timestamp = inbox_sms_timestamp + "00"
+                            input_format = "%y/%m/%d,%H:%M:%S%z"
+                            inbox_sms_datetime = datetime.strptime(inbox_sms_timestamp, input_format)
+                            output_format = "%d/%m/%Y %H:%M:%S"
+                            inbox_sms_timestamp = inbox_sms_datetime.strftime(output_format)
+
+                            # SMS Message
+                            inbox_sms_encoded_content = inbox_sms.get("Content")
+                            inbox_sms_content_hex = [inbox_sms_encoded_content[i:i + 4] for i in range(0, len(inbox_sms_encoded_content), 4)]
+                            inbox_sms_content = ''.join(chr(int(char, 16)) for char in inbox_sms_content_hex)
+                            self.debug(inbox_sms_timestamp + " - " + str(inbox_sms_obj_index) + " - " + inbox_sms_from + " - " + inbox_sms_content)
+
+        return self._cellwan_sim
+
+    async def _get_cellwan_sim(self, num_retries=MAX_NUM_RETRIES):
+
+        if await self._get_user_login() is not None:
+
+            cellwan_sim_data = None
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_sim"
+            headers = {
+                "Accept": 'application/json, text/javascript, */*; q=0.01',
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+            try:
+                async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                    await self._async_init_session()
+                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                cellwan_sim_data = decoded_zyxel_json
+                            else:
+                                msg = 'Cell Wan SIM (' + url + ') error: ' + str(zyxel_json)
+                                code = 603
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            if num_retries > 0:
+                                self._UserLogin = None
+                                await self._async_close_session()
+                                cellwan_sim_data = await self._get_cellwan_sim(num_retries - 1)
+                            else:
+                                msg = f"Request error {url}: {response.status}"
+                                code = 602
+                                raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 601
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 600
+                raise ZyxelError(msg, code)
+
+            if cellwan_sim_data is not None:
+                cellwan_sim_data_object = cellwan_sim_data.get("Object")
+                if cellwan_sim_data_object is not None:
+                    self._cellwan_sim = cellwan_sim_data_object[0]
+                    self.debug(self._cellwan_sim)
+
+        return self._cellwan_sim
+
+    async def _get_cellwan_status(self, num_retries=MAX_NUM_RETRIES):
+
+        if self._cellwan_status_timestamp is None or time.time() > self._cellwan_status_timestamp + self.MIN_INTERVAL_S:
+
+            self._cellwan_status_timestamp = time.time()
 
             if await self._get_user_login() is not None:
 
-                cell_status_data = None
+                cellwan_status_data = None
 
                 url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_status"
                 headers = {
@@ -170,7 +338,7 @@ class Zyxel:
                                 )
                                 decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
                                 if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                    cell_status_data = decoded_zyxel_json
+                                    cellwan_status_data = decoded_zyxel_json
                                 else:
                                     msg = 'Cell Status (' + url + ') error: ' + str(zyxel_json)
                                     code = 403
@@ -180,7 +348,7 @@ class Zyxel:
                                 if num_retries > 0:
                                     self._UserLogin = None
                                     await self._async_close_session()
-                                    cell_status_data = await self._get_cell_status(num_retries - 1)
+                                    cellwan_status_data = await self._get_cellwan_status(num_retries - 1)
                                 else:
                                     msg = f"Request error {url}: {response.status}"
                                     code = 402
@@ -194,13 +362,13 @@ class Zyxel:
                     code = 400
                     raise ZyxelError(msg, code)
 
-                if cell_status_data is not None:
-                    cell_status_data_object = cell_status_data.get("Object")
-                    if cell_status_data_object is not None:
-                        self._CellStatus = cell_status_data_object[0]
-                        self.debug(self._CellStatus)
+                if cellwan_status_data is not None:
+                    cellwan_status_data_object = cellwan_status_data.get("Object")
+                    if cellwan_status_data_object is not None:
+                        self._cellwan_status = cellwan_status_data_object[0]
+                        self.debug(self._cellwan_status)
 
-        return self._CellStatus
+        return self._cellwan_status
 
     async def _get_user_login(self):
         if self._UserLogin is None:

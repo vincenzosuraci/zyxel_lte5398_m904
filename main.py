@@ -18,32 +18,18 @@ if __name__ == "__main__":
         "ip_address": os.getenv("ADDR")
     }
 
-    stand_alone = False
+    from custom_components.zyxel_lte5398_m904.zyxel import Zyxel
+    zyxel = Zyxel(
+        params=params
+    )
 
-    if stand_alone:
+    import asyncio
+    #asyncio.run(zyxel.reboot())
+    asyncio.run(zyxel.retrieve_sms_messages())
 
-        from zyxel_lte5398_m904_stand_alone import ZyXEL_LTE5398_M904_Crawler
-        zyxel = ZyXEL_LTE5398_M904_Crawler(
-            params=params
-        )
-
-        # zyxel.update_cell_status_data()
-
-        zyxel.reboot()
-
-    else:
-
-        from custom_components.zyxel_lte5398_m904.zyxel import Zyxel
-        zyxel = Zyxel(
-            params=params
-        )
-
-        import asyncio
-        asyncio.run(zyxel.reboot())
-
-        #import time
-        #time.sleep(5)
-        #asyncio.run(zyxel.fetch_data())
+    #import time
+    #time.sleep(5)
+    #asyncio.run(zyxel.fetch_data())
 
 
 
