@@ -43,6 +43,9 @@ class ZyxelDevice(Zyxel):
 
             data = {}
 
+            if "LAST_SMS_MSG" in raw_data:
+                data[ZYXEL_SENSOR_LAST_SMS] = str(raw_data.get("LAST_SMS_MSG"))
+
             if "INTF_RSRP" in raw_data:
                 data[ZYXEL_SENSOR_RSRP] = int(raw_data.get("INTF_RSRP"))
 

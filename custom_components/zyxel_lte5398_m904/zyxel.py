@@ -6,6 +6,7 @@ import os
 import time
 import json as JSON
 from datetime import datetime
+from urllib.parse import quote
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import AES
@@ -37,6 +38,8 @@ class Zyxel:
         self._username = params.get("username", None)
         self._password = params.get("password", None)
 
+        self._aes_key = None
+
         self._BasicInformation = None
         self._RSAPublicKey = None
         self._UserLogin = None
@@ -45,6 +48,8 @@ class Zyxel:
         self._cellwan_sms = None
         self._cellwan_status_timestamp = None
         self._sessionkey = None
+
+        self._sms_by_YmdHMS = {}
 
         self._session = None
         self._cookies = None
@@ -74,7 +79,11 @@ class Zyxel:
         return basic_information.get("SoftwareVersion")
 
     async def fetch_data(self):
-        return await self._get_cellwan_status()
+        data = await self._get_cellwan_status()
+        last_sms = await self.get_last_sms()
+        if last_sms is not None:
+            data["LAST_SMS_MSG"] = last_sms.get('msg')
+        return data
 
     async def test_connection(self):
         data = await self.fetch_data()
@@ -90,7 +99,19 @@ class Zyxel:
         return await self._get_cellwan_sim()
 
     async def retrieve_sms_messages(self):
-        return await self._get_cellwan_sms()
+        await self._get_cellwan_sms()
+
+    async def get_last_sms(self):
+        if await self._put_cellwan_wait_state():
+            if await self._put_cellwan_sms():
+                while not await self._get_cellwan_wait_state():
+                    time.sleep(3)
+                await self._get_cellwan_sms()
+                last_sms = await self._delete_all_sms_but_last()
+                last_parsed_sms = await self._parse_sms(last_sms)
+                self.debug(last_parsed_sms)
+                return last_parsed_sms
+        return None
 
     # ------------------------------------------------------------------------------------------------------------------
     #
@@ -146,10 +167,255 @@ class Zyxel:
                 raise ZyxelError(msg, code)
         return False
 
+    # ------------------------------------------------------------------------------------------------------------------
+    #
+    # Delete SMS
+    #
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def delete_sms(self, ObjIndex=None):
+
+        deleted = False
+
+        if ObjIndex is not None and await self._get_user_login() is not None:
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_sms&objIndex=" + quote(ObjIndex)
+            headers = {
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "CSRFToken": self._sessionkey,
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+
+            try:
+                async with async_timeout.timeout(30):  # Timeout di 30 secondi
+                    await self._async_init_session()
+                    async with self._session.delete(url, headers=headers, cookies=self._cookies) as response:
+                        self.debug(response)
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                deleted = True
+                            else:
+                                msg = 'Cell WAN Delete SMS (' + url + ') error: ' + str(zyxel_json)
+                                code = 803
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            msg = f"Request error {url}: {response.status}"
+                            code = 802
+                            raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 801
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 800
+                raise ZyxelError(msg, code)
+
+        return deleted
 
     # ------------------------------------------------------------------------------------------------------------------
     # Get methods
     # ------------------------------------------------------------------------------------------------------------------
+
+    async def _get_cellwan_wait_state(self):
+
+        success = False
+
+        if await self._get_user_login() is not None:
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_wait_state"
+            headers = {
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "CSRFToken": self._sessionkey,
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+
+            try:
+                async with async_timeout.timeout(30):  # Timeout di 30 secondi
+                    await self._async_init_session()
+                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                WAIT_STATE_SMS = decoded_zyxel_json.get("Object")[0].get("WAIT_STATE_SMS")
+                                if WAIT_STATE_SMS == "RESUME_SUCC":
+                                    success = True
+                            else:
+                                msg = 'Cell WAN Wait State Get (' + url + ') error: ' + str(zyxel_json)
+                                code = 1203
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            msg = f"Request error {url}: {response.status}"
+                            code = 1202
+                            raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 1201
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 1200
+                raise ZyxelError(msg, code)
+
+        return success
+
+    async def _put_cellwan_wait_state(self):
+
+        success = False
+
+        if await self._get_user_login() is not None:
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_wait_state"
+            headers = {
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "CSRFToken": self._sessionkey,
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+
+            data_dict = self._get_content_key_iv({
+                "WAIT_STATE_SMS":"LOADING"
+            })
+            data_dict["key"] = ""
+            data = JSON.dumps(data_dict)
+
+            try:
+                async with async_timeout.timeout(30):  # Timeout di 30 secondi
+                    await self._async_init_session()
+                    async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                self._sessionkey = decoded_zyxel_json.get("sessionkey")
+                                success = True
+                            else:
+                                msg = 'Cell WAN Wait State Put (' + url + ') error: ' + str(zyxel_json)
+                                code = 1103
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            msg = f"Request error {url}: {response.status}"
+                            code = 1102
+                            raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 1101
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 1100
+                raise ZyxelError(msg, code)
+
+        return success
+
+    async def _put_cellwan_sms(self):
+
+        success = False
+
+        if await self._get_user_login() is not None:
+
+            cellwan_sms = await self._get_cellwan_sms()
+            cellwan_sms["SMS_InboxRetrieve"] = True
+            data_dict = self._get_content_key_iv(cellwan_sms)
+            data_dict["key"] = ""
+            data = JSON.dumps(data_dict)
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=cellwan_sms"
+            headers = {
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "CSRFToken": self._sessionkey,
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/Broadband",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+
+            try:
+                async with async_timeout.timeout(30):  # Timeout di 30 secondi
+                    await self._async_init_session()
+                    async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
+                        zyxel_json = await response.json()
+                        if response.status == 200:
+                            decoded_zyxel_str = self.dxc(
+                                zyxel_json.get("content"),
+                                self._aes_key,
+                                zyxel_json.get("iv")
+                            )
+                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                self._sessionkey = decoded_zyxel_json.get("sessionkey")
+                                success = True
+                            else:
+                                msg = 'Cell WAN Put SMS (' + url + ') error: ' + str(zyxel_json)
+                                code = 1003
+                                raise ZyxelError(msg, code)
+                            await self._async_close_session()
+                        else:
+                            msg = f"Request error {url}: {response.status}"
+                            code = 1002
+                            raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 1001
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 1000
+                raise ZyxelError(msg, code)
+
+        return success
 
     async def _get_cellwan_sms(self, num_retries=MAX_NUM_RETRIES):
 
@@ -211,38 +477,23 @@ class Zyxel:
                 cellwan_sms_data_object = cellwan_sms_data.get("Object")
                 if cellwan_sms_data_object is not None:
                     self._cellwan_sms = cellwan_sms_data_object[0]
-                    SMS_UsedSpace = self._cellwan_sms.get("SMS_UsedSpace")
-                    SMS_TotalSpace = self._cellwan_sms.get("SMS_TotalSpace")
-                    cellwan_sms_inbox = self._cellwan_sms.get("SMS_Inbox")
-                    if cellwan_sms_inbox is not None:
-                        for inbox_sms in cellwan_sms_inbox:
-                            #self.debug(inbox_sms)
+                    await self._parse_cellwan_sms()
 
-                            # SMS ObjIndex
-                            inbox_sms_obj_index = inbox_sms.get("ObjIndex")
-
-                            # SMS From
-                            inbox_sms_encoded_from = inbox_sms.get("From")
-                            inbox_sms_from = ''.join(chr(int(inbox_sms_encoded_from[i:i+2], 16)) for i in range(0, len(inbox_sms_encoded_from), 2))
-
-                            # SMS TimeStamp
-                            inbox_sms_timestamp = inbox_sms.get("TimeStamp")
-                            inbox_sms_timestamp = inbox_sms_timestamp + "00"
-                            input_format = "%y/%m/%d,%H:%M:%S%z"
-                            inbox_sms_datetime = datetime.strptime(inbox_sms_timestamp, input_format)
-                            output_format = "%d/%m/%Y %H:%M:%S"
-                            inbox_sms_timestamp = inbox_sms_datetime.strftime(output_format)
-
-                            # SMS Message
-                            inbox_sms_encoded_content = inbox_sms.get("Content")
-                            inbox_sms_content_hex = [inbox_sms_encoded_content[i:i + 4] for i in range(0, len(inbox_sms_encoded_content), 4)]
-                            inbox_sms_content = ''.join(chr(int(char, 16)) for char in inbox_sms_content_hex)
-                            self.debug(inbox_sms_timestamp + " - " + str(inbox_sms_obj_index) + " - " + inbox_sms_from + " - " + inbox_sms_content)
-
-        return self._cellwan_sim
+        return self._cellwan_sms
 
     async def _get_cellwan_sim(self, num_retries=MAX_NUM_RETRIES):
+        """
 
+        :param num_retries:
+        :return:
+        'USIM_Status': 'DEVST_SIM_RDY',
+        'USIM_IMSI': USIM_IMSI,
+        'USIM_ICCID': USIM_ICCID,
+        'USIM_PIN_Protection': False,
+        'USIM_PIN_STATE': '',
+        'USIM_PIN_RemainingAttempts': 3,
+        'USIM_PUK_RemainingAttempts': 10
+        """
         if await self._get_user_login() is not None:
 
             cellwan_sim_data = None
@@ -300,7 +551,6 @@ class Zyxel:
                 cellwan_sim_data_object = cellwan_sim_data.get("Object")
                 if cellwan_sim_data_object is not None:
                     self._cellwan_sim = cellwan_sim_data_object[0]
-                    self.debug(self._cellwan_sim)
 
         return self._cellwan_sim
 
@@ -366,7 +616,6 @@ class Zyxel:
                     cellwan_status_data_object = cellwan_status_data.get("Object")
                     if cellwan_status_data_object is not None:
                         self._cellwan_status = cellwan_status_data_object[0]
-                        self.debug(self._cellwan_status)
 
         return self._cellwan_status
 
@@ -374,7 +623,7 @@ class Zyxel:
         if self._UserLogin is None:
             if await self._get_rsa_public_key() is not None:
                 url = 'http://' + self._ip_address + '/UserLogin'
-                data = self._get_content_key_iv()
+                data = self._get_user_login_content_key_iv()
                 headers = {
                     'Accept': 'application/json, text/javascript, */*; q=0.01',
                     'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -395,6 +644,13 @@ class Zyxel:
                             zyxel_json = await response.json()
                             if response.status == 200:
                                 self._UserLogin = zyxel_json
+                                user_login_str = self.dxc(
+                                    self._UserLogin['content'],
+                                    self._aes_key,
+                                    self._UserLogin['iv']
+                                )
+                                user_login_json = JSON.loads(user_login_str)
+                                self._sessionkey = user_login_json.get('sessionkey')
                                 self.info("UserLogin successfully executed")
                                 set_cookie = response.headers.get('Set-Cookie')
                                 if set_cookie:
@@ -478,7 +734,7 @@ class Zyxel:
     # Data manipulation methods
     # ------------------------------------------------------------------------------------------------------------------
 
-    def _get_content_key_iv(self):
+    def _get_user_login_content_key_iv(self):
 
         # Converte la password in bytes
         password_bytes = self._password.encode('utf-8')
@@ -489,7 +745,7 @@ class Zyxel:
         # Converte il risultato da bytes a stringa
         base64_password = password_base64_bytes.decode('utf-8')
 
-        s = {
+        user_login_dict = {
             "Input_Account": self._username,
             "Input_Passwd": base64_password,
             "currLang": "en",
@@ -497,20 +753,26 @@ class Zyxel:
             "SHA512_password": False
         }
 
-        s_str = JSON.dumps(s, separators=(',', ':'))
+        return self._get_content_key_iv(json_dict=user_login_dict)
 
-        # Initilization Vector - iv
+    def _get_content_key_iv(self, json_dict):
+
+        json_str = JSON.dumps(json_dict, separators=(',', ':'))
+
+        # Initialization Vector - iv
         iv32 = os.urandom(32)  # Vettore di inizializzazione di 32 byte
         iv = base64.b64encode(iv32).decode('utf-8')
 
         # Chiave AES
-        aes_key = os.urandom(32)  # Chiave AES di 32 bytes (256 bit)
-        self._aes_key = base64.b64encode(aes_key).decode('utf-8')
+        if self._aes_key is None:
+            random_aes_key = os.urandom(32)  # Chiave AES di 32 bytes (256 bit)
+            self._aes_key = base64.b64encode(random_aes_key).decode('utf-8')
+        aes_key = base64.b64decode(self._aes_key)
 
         # Crittografia dei dati con AES
         iv16 = iv32[:16]  # Vettore di inizializzazione di 16 byte
         cipher_aes = AES.new(aes_key, AES.MODE_CBC, iv16)
-        encrypted_data = cipher_aes.encrypt(pad(s_str.encode('utf-8'), AES.block_size))
+        encrypted_data = cipher_aes.encrypt(pad(json_str.encode('utf-8'), AES.block_size))
         content = base64.b64encode(encrypted_data).decode('utf-8')
 
         # Crittografia della chiave AES con RSA
@@ -549,6 +811,79 @@ class Zyxel:
 
         # Restituisce i dati decrittografati come stringa UTF-8
         return decrypted_data.decode('utf-8')
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # SMS related methods
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def _delete_all_sms_but_last(self):
+        delete = False
+        last_sms = None
+        for YmdHMS in list(self._sms_by_YmdHMS.keys()):
+            sms = self._sms_by_YmdHMS[YmdHMS]
+            if delete:
+                parsed_sms = await self._parse_sms(sms)
+                self.debug(f"Deleting sms: {parsed_sms}")
+                sms_obj_index = str(sms.get("ObjIndex"))
+                if await self.delete_sms(ObjIndex=sms_obj_index):
+                    self._sms_by_YmdHMS.pop(YmdHMS)
+            else:
+                last_sms = sms
+                delete = True
+        return last_sms
+
+    async def _parse_cellwan_sms(self):
+        if self._cellwan_sms is not None:
+            self._sms_by_YmdHMS = {}
+            cellwan_sms_inbox = self._cellwan_sms.get("SMS_Inbox")
+            if cellwan_sms_inbox is not None:
+                for inbox_sms in cellwan_sms_inbox:
+                    inbox_sms_timestamp = await self._get_sms_timestamp(inbox_sms)
+                    if inbox_sms_timestamp is not None:
+                        # Store SMS
+                        self._sms_by_YmdHMS[inbox_sms_timestamp] = inbox_sms
+                self._sms_by_YmdHMS = dict(sorted(self._sms_by_YmdHMS.items(), reverse=True))
+
+    async def _get_sms_timestamp(self, inbox_sms, output_format="%Y%m%d%H%M%S"):
+        sms_timestamp = None
+        inbox_sms_timestamp = inbox_sms.get("TimeStamp")
+        if inbox_sms_timestamp is not None:
+            inbox_sms_timestamp = inbox_sms_timestamp + "00"
+            input_format = "%y/%m/%d,%H:%M:%S%z"
+            inbox_sms_datetime = datetime.strptime(inbox_sms_timestamp, input_format)
+            sms_timestamp = inbox_sms_datetime.strftime(output_format)
+        return sms_timestamp
+
+    async def _parse_sms(self, inbox_sms):
+
+        # SMS ObjIndex
+        inbox_sms_obj_index = inbox_sms.get("ObjIndex")
+
+        # SMS From
+        inbox_sms_encoded_from = inbox_sms.get("From")
+        inbox_sms_from = ''.join(
+            chr(int(inbox_sms_encoded_from[i:i + 2], 16)) for i in range(0, len(inbox_sms_encoded_from), 2))
+
+        # SMS TimeStamp
+        inbox_sms_timestamp = inbox_sms.get("TimeStamp")
+        inbox_sms_timestamp = inbox_sms_timestamp + "00"
+        input_format = "%y/%m/%d,%H:%M:%S%z"
+        inbox_sms_datetime = datetime.strptime(inbox_sms_timestamp, input_format)
+        output_format = "%d/%m/%Y %H:%M:%S"
+        inbox_sms_timestamp = inbox_sms_datetime.strftime(output_format)
+
+        # SMS Message
+        inbox_sms_encoded_content = inbox_sms.get("Content")
+        inbox_sms_content_hex = [inbox_sms_encoded_content[i:i + 4] for i in
+                                 range(0, len(inbox_sms_encoded_content), 4)]
+        inbox_sms_msg = ''.join(chr(int(char, 16)) for char in inbox_sms_content_hex)
+
+        return {
+            "from": inbox_sms_from,
+            "timestamp": inbox_sms_timestamp,
+            "msg": inbox_sms_msg
+        }
+
 
     # ------------------------------------------------------------------------------------------------------------------
     # Session related methods

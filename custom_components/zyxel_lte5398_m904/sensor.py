@@ -56,6 +56,12 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 
     if data is not None:
 
+        if ZYXEL_SENSOR_LAST_SMS in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=str(ZYXEL_SENSOR_LAST_SMS).lower().replace(" ", "_"),
+                name=ZYXEL_SENSOR_LAST_SMS,
+                icon="mdi:message-text-outline",
+            )))
         if ZYXEL_SENSOR_RSRP in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=str(ZYXEL_SENSOR_RSRP).lower().replace(" ", "_"),

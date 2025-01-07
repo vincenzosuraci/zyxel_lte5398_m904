@@ -36,6 +36,7 @@ ZYXEL_SENSOR_PHY_CELL_ID = "Physical Cell ID"
 ZYXEL_SENSOR_ENB = "eNodeB"
 ZYXEL_SENSOR_MAIN_BAND = "Main Band"
 ZYXEL_SENSOR_CA_BANDS = "Carrier Aggregated Bands"
+ZYXEL_SENSOR_LAST_SMS = "Last SMS"
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Device buttons
