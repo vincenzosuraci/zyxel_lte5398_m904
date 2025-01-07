@@ -156,10 +156,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     device_info = DeviceInfo(
         identifiers={(DOMAIN, device_id)},
         name=device_name,
-        manufacturer=device_name,
+        manufacturer=device_manufacturer,
         model=device_model,  # Modello del modem (aggiorna con il modello corretto)
-        sw_version=device_sw_version,  # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
-        via_device=(DOMAIN, config_entry.entry_id),
+        sw_version=device_sw_version # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
     )
 
     sensors = await get_sensors(coordinator, device_info)
