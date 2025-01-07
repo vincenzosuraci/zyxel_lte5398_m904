@@ -105,7 +105,7 @@ class Zyxel:
         if await self._put_cellwan_wait_state():
             if await self._put_cellwan_sms():
                 while not await self._get_cellwan_wait_state():
-                    time.sleep(3)
+                    await asyncio.sleep(3)
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
                 last_parsed_sms = await self._parse_sms(last_sms)
