@@ -77,8 +77,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         name=device_name,
         manufacturer=device_name,
         model=device_model,  # Modello del modem (aggiorna con il modello corretto)
-        sw_version=device_sw_version,  # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
-        via_device=(DOMAIN, config_entry.entry_id),
+        sw_version=device_sw_version  # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
     )
 
     buttons = await get_buttons(coordinator, device_info)
