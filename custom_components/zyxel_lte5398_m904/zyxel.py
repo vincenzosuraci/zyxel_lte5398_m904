@@ -50,6 +50,7 @@ class Zyxel:
         self._sessionkey = None
 
         self._sms_by_YmdHMS = {}
+        self._last_parsed_sms = None
 
         self._session = None
         self._cookies = None
@@ -80,7 +81,8 @@ class Zyxel:
 
     async def fetch_data(self):
         data = await self._get_cellwan_status()
-        last_sms = await self.get_last_sms()
+        last_sms = None
+        #last_sms = await self.get_last_sms()
         if last_sms is not None:
             data["LAST_SMS_MSG"] = last_sms.get('msg')
         return data
@@ -108,10 +110,8 @@ class Zyxel:
                     await asyncio.sleep(3)
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
-                last_parsed_sms = await self._parse_sms(last_sms)
-                self.debug(last_parsed_sms)
-                return last_parsed_sms
-        return None
+                self._last_parsed_sms = await self._parse_sms(last_sms)
+        return self._last_parsed_sms
 
     # ------------------------------------------------------------------------------------------------------------------
     #
