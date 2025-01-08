@@ -1,5 +1,5 @@
 import logging
-from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.components.button import ButtonEntity, ButtonEntityDescription, ButtonDeviceClass
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -22,12 +22,18 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         self._attr_device_info = device_info
 
     async def async_press(self):
+        if self._attr_name == ZYXEL_BUTTON_REBOOT:
+            await self.reboot()
+        elif self._attr_name == ZYXEL_BUTTON_UPDATE_LAST_SMS:
+            await self.update_last_sms()
+
+    async def reboot(self):
         """Esegue l'azione di reboot."""
-        notification_title = "Riavvio " + DEVICE_MANUFACTURER
+        notification_title = "Riavvio - " + DEVICE_MANUFACTURER
         notification_message = None
         try:
             # Accedi al dispositivo tramite il coordinatore
-            if await self.coordinator.zyxel.reboot():
+            if await self.coordinator.zyxel_device.reboot():
                 notification_message += "Reboot avviato con successo."
             else:
                 notification_message += "Errore durante il reboot"
@@ -38,6 +44,25 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
             notification_message, title=notification_title
         )
 
+    async def update_last_sms(self):
+        """Esegue l'azione di aggiornamento dell'ultimo SMS ricevuto."""
+        notification_title = "Aggiornamento dell'ultimo SMS ricevuto - " + DEVICE_MANUFACTURER
+        notification_message = None
+        try:
+            last_sms = await self.coordinator.zyxel_device.get_last_sms()
+            # Accedi al dispositivo tramite il coordinatore
+            if last_sms is not None:
+                notification_message += f"Ultimo SMS ricevuto aggiornato con successo: {last_sms.get('msg')}"
+            else:
+                notification_message += "Errore durante l'aggiornamento dell'ultimo SMS ricevuto"
+        except Exception as e:
+            notification_message += f"Errore durante l'aggiornamento dell'ultimo SMS ricevuto: {e}"
+        # Notifica l'utente
+        self.hass.components.persistent_notification.create(
+            notification_message, title=notification_title
+        )
+
+
 
 async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
     buttons = []
@@ -46,7 +71,14 @@ async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
         key=str(ZYXEL_BUTTON_REBOOT).lower().replace(" ", "_"),
         name=ZYXEL_BUTTON_REBOOT,
         icon="mdi:restart",
-        device_class="restart",
+        device_class=ButtonDeviceClass.RESTART,
+    )))
+    # Update Last SMS button
+    buttons.append(ZyxelButton(coordinator, device_info, ButtonEntityDescription(
+        key=str(ZYXEL_BUTTON_UPDATE_LAST_SMS).lower().replace(" ", "_"),
+        name=ZYXEL_BUTTON_UPDATE_LAST_SMS,
+        icon="mdi:update",
+        device_class=ButtonDeviceClass.UPDATE,
     )))
     return buttons
 
@@ -54,13 +86,13 @@ async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Configura i sensori da una config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    zyxel = coordinator.zyxel
+    zyxel_device = coordinator.zyxel_device
 
     device_manufacturer = DEVICE_MANUFACTURER
-    device_name = await zyxel.get_name()
-    device_model = await zyxel.get_model()
-    device_sw_version = await zyxel.get_sw_version()
-    device_id = await zyxel.get_id()
+    device_name = await zyxel_device.get_name()
+    device_model = await zyxel_device.get_model()
+    device_sw_version = await zyxel_device.get_sw_version()
+    device_id = await zyxel_device.get_id()
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(

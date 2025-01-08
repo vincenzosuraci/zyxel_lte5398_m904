@@ -28,14 +28,14 @@ try:
         username = config_entry.data[CONF_USERNAME]
         password = config_entry.data[CONF_PASSWORD]
 
-        zyxel = ZyxelDevice(params={
+        zyxel_device = ZyxelDevice(params={
             "username": username,
             "password": password,
             "ip_address": ip_address
         })
 
         # Inizializza il coordinatore
-        coordinator = ZyxelCoordinator(hass, zyxel)
+        coordinator = ZyxelCoordinator(hass, zyxel_device)
 
         # Memorizza il coordinatore nel registro dei dati di Home Assistant
         hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = coordinator

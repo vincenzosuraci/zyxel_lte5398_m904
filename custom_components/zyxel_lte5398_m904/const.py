@@ -42,3 +42,4 @@ ZYXEL_SENSOR_LAST_SMS = "Last SMS"
 # Device buttons
 # ----------------------------------------------------------------------------------------------------------------------
 ZYXEL_BUTTON_REBOOT ="Reboot"
+ZYXEL_BUTTON_UPDATE_LAST_SMS ="Update Last SMS"

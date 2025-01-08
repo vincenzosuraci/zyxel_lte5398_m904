@@ -80,11 +80,13 @@ class Zyxel:
         return basic_information.get("SoftwareVersion")
 
     async def fetch_data(self):
+        # Recupero dei dati sulle celle
         data = await self._get_cellwan_status()
-        last_sms = None
-        #last_sms = await self.get_last_sms()
-        if last_sms is not None:
-            data["LAST_SMS_MSG"] = last_sms.get('msg')
+        # Recupero dei dati sull'ultimo SMS
+        if self._last_parsed_sms is None:
+            data["LAST_SMS_MSG"] = None
+        else:
+            data["LAST_SMS_MSG"] = self._last_parsed_sms.get('msg')
         return data
 
     async def test_connection(self):

@@ -52,7 +52,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 
     sensors = []
 
-    data = await coordinator.zyxel.fetch_data()
+    data = await coordinator.zyxel_device.fetch_data()
 
     if data is not None:
 
@@ -135,13 +135,13 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Configura i sensori da una config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    zyxel = coordinator.zyxel
+    zyxel_device = coordinator.zyxel_device
 
     device_manufacturer = DEVICE_MANUFACTURER
-    device_name = await zyxel.get_name()
-    device_model = await zyxel.get_model()
-    device_sw_version = await zyxel.get_sw_version()
-    device_id = await zyxel.get_id()
+    device_name = await zyxel_device.get_name()
+    device_model = await zyxel_device.get_model()
+    device_sw_version = await zyxel_device.get_sw_version()
+    device_id = await zyxel_device.get_id()
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
