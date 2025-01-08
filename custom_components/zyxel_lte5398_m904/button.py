@@ -30,7 +30,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
     async def reboot(self):
         """Esegue l'azione di reboot."""
         notification_title = "Riavvio - " + DEVICE_MANUFACTURER
-        notification_message = None
+        notification_message = ""
         try:
             # Accedi al dispositivo tramite il coordinatore
             if await self.coordinator.zyxel_device.reboot():
@@ -47,7 +47,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
     async def update_last_sms(self):
         """Esegue l'azione di aggiornamento dell'ultimo SMS ricevuto."""
         notification_title = "Aggiornamento dell'ultimo SMS ricevuto - " + DEVICE_MANUFACTURER
-        notification_message = None
+        notification_message = ""
         try:
             last_sms = await self.coordinator.zyxel_device.get_last_sms()
             # Accedi al dispositivo tramite il coordinatore
