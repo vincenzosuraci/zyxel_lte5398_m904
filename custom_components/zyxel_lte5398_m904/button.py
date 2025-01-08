@@ -38,7 +38,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
             else:
                 notification_message += "Errore durante il reboot"
         except Exception as e:
-            notification_message += f"Errore durante il reboot: {e}"
+            notification_message += f"Errore durante il reboot: {str(e)}"
         # Notifica l'utente
         self.hass.components.persistent_notification.create(
             notification_message, title=notification_title
@@ -52,16 +52,15 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
             last_sms = await self.coordinator.zyxel_device.get_last_sms()
             # Accedi al dispositivo tramite il coordinatore
             if last_sms is not None:
-                notification_message += f"Ultimo SMS ricevuto aggiornato con successo: {last_sms.get('msg')}"
+                notification_message += f"Ultimo SMS ricevuto aggiornato con successo: {str(last_sms.get('msg'))}"
             else:
                 notification_message += "Errore durante l'aggiornamento dell'ultimo SMS ricevuto"
         except Exception as e:
-            notification_message += f"Errore durante l'aggiornamento dell'ultimo SMS ricevuto: {e}"
+            notification_message += f"Errore durante l'aggiornamento dell'ultimo SMS ricevuto: {str(e)}"
         # Notifica l'utente
         self.hass.components.persistent_notification.create(
             notification_message, title=notification_title
         )
-
 
 
 async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
