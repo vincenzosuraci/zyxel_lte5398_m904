@@ -3,7 +3,6 @@ from homeassistant.components.button import ButtonEntity, ButtonEntityDescriptio
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.components.persistent_notification import create
 from .const import *
 from .coordinator import ZyxelCoordinator
 
@@ -30,39 +29,17 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
             await self.update_last_sms()
 
     async def reboot(self):
-        """Esegue l'azione di reboot."""
-        notification_title = "Riavvio - " + DEVICE_MANUFACTURER
-        notification_message = ""
         try:
             # Accedi al dispositivo tramite il coordinatore
-            if await self.coordinator.zyxel_device.reboot():
-                notification_message += "Reboot avviato con successo."
-            else:
-                notification_message += "Errore durante il reboot"
+            await self.coordinator.zyxel_device.reboot()
         except Exception as e:
-            notification_message += f"Errore durante il reboot: {str(e)}"
-        # Notifica l'utente
-        create(
-            notification_message, title=notification_title
-        )
+            pass
 
     async def update_last_sms(self):
-        """Esegue l'azione di aggiornamento dell'ultimo SMS ricevuto."""
-        notification_title = "Aggiornamento dell'ultimo SMS ricevuto - " + DEVICE_MANUFACTURER
-        notification_message = ""
         try:
-            last_sms = await self.coordinator.zyxel_device.get_last_sms()
-            # Accedi al dispositivo tramite il coordinatore
-            if last_sms is not None:
-                notification_message += f"Ultimo SMS ricevuto aggiornato con successo: {str(last_sms.get('msg'))}"
-            else:
-                notification_message += "Errore durante l'aggiornamento dell'ultimo SMS ricevuto"
+            await self.coordinator.zyxel_device.get_last_sms()
         except Exception as e:
-            notification_message += f"Errore durante l'aggiornamento dell'ultimo SMS ricevuto: {str(e)}"
-        # Notifica l'utente
-        create(
-            notification_message, title=notification_title
-        )
+            pass
 
 
 async def get_buttons(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
