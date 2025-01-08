@@ -3,8 +3,10 @@ from homeassistant.components.button import ButtonEntity, ButtonEntityDescriptio
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.persistent_notification import create
 from .const import *
 from .coordinator import ZyxelCoordinator
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +42,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         except Exception as e:
             notification_message += f"Errore durante il reboot: {str(e)}"
         # Notifica l'utente
-        self.hass.components.persistent_notification.create(
+        create(
             notification_message, title=notification_title
         )
 
@@ -58,7 +60,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         except Exception as e:
             notification_message += f"Errore durante l'aggiornamento dell'ultimo SMS ricevuto: {str(e)}"
         # Notifica l'utente
-        self.hass.components.persistent_notification.create(
+        create(
             notification_message, title=notification_title
         )
 
