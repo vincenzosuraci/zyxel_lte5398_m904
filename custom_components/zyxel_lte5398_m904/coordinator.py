@@ -38,9 +38,6 @@ class ZyxelCoordinator(DataUpdateCoordinator):
         self._zyxel_device = zyxel_device
 
     @property
-    def zyxel(self):
-        return self._zyxel_device
-
     def zyxel_device(self):
         return self._zyxel_device
 
