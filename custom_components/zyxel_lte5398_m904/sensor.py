@@ -48,9 +48,10 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
             self.coordinator.async_add_listener(self.async_write_ha_state)
         )
 
-def get_sensor_key(zyxel_device: ZyxelDevice, sensor_name: str):
+async def get_sensor_key(zyxel_device: ZyxelDevice, sensor_name: str):
+    zyxel_device_id = await zyxel_device.get_id()
     return (
-        f"{zyxel_device.get_id()}_{sensor_name.lower().replace(' ', '_')}"
+        f"{zyxel_device_id}_{sensor_name.lower().replace(' ', '_')}"
     )
 
 async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
