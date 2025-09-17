@@ -143,7 +143,7 @@ class Zyxel:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
                     await self._async_init_session()
                     async with self._session.post(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         await self._async_close_session()
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
@@ -201,7 +201,7 @@ class Zyxel:
                     await self._async_init_session()
                     async with self._session.delete(url, headers=headers, cookies=self._cookies) as response:
                         self.debug(response)
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -261,7 +261,7 @@ class Zyxel:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
                     await self._async_init_session()
                     async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -325,7 +325,7 @@ class Zyxel:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
                     await self._async_init_session()
                     async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -388,7 +388,7 @@ class Zyxel:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
                     await self._async_init_session()
                     async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -442,7 +442,7 @@ class Zyxel:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
                     await self._async_init_session()
                     async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -516,7 +516,7 @@ class Zyxel:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
                     await self._async_init_session()
                     async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = await response.json()
+                        zyxel_json = JSON.loads(await response.text())
                         if response.status == 200:
                             decoded_zyxel_str = self.dxc(
                                 zyxel_json.get("content"),
@@ -581,7 +581,7 @@ class Zyxel:
                     async with async_timeout.timeout(10):  # Timeout di 10 secondi
                         await self._async_init_session()
                         async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                            zyxel_json = await response.json()
+                            zyxel_json = JSON.loads(await response.text())
                             if response.status == 200:
                                 decoded_zyxel_str = self.dxc(
                                     zyxel_json.get("content"),
@@ -643,7 +643,7 @@ class Zyxel:
                     async with async_timeout.timeout(10):  # Timeout di 10 secondi
                         await self._async_init_session()
                         async with self._session.post(url, json=data, headers=headers) as response:
-                            zyxel_json = await response.json()
+                            zyxel_json = JSON.loads(await response.text())
                             if response.status == 200:
                                 self._UserLogin = zyxel_json
                                 user_login_str = self.dxc(
@@ -681,7 +681,7 @@ class Zyxel:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
                     async with self._session.get(url) as response:
                         if response.status == 200:
-                            zyxel_json = await response.json()
+                            zyxel_json = JSON.loads(await response.text())
                             if zyxel_json.get("result") == self.ZCFG_SUCCESS:
                                 self._BasicInformation = zyxel_json
                                 self.info("Basic Information successfully retrieved")
@@ -712,7 +712,7 @@ class Zyxel:
                     await self._async_init_session()  # Inizializza la sessione se non esiste già
                     async with self._session.get(url) as response:
                         if response.status == 200:
-                            zyxel_json = await response.json()
+                            zyxel_json = JSON.loads(await response.text())
                             if zyxel_json.get("result") != self.ZCFG_SUCCESS:
                                 self.error('RSA Public Key (' + url + ') error: ' + str(zyxel_json))
                                 self.error(str(response.content))
