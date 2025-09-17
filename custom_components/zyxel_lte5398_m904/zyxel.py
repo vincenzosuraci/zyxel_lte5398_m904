@@ -45,6 +45,7 @@ class Zyxel:
         self._RSAPublicKey = None
         self._UserLogin = None
         self._cellwan_status = None
+        self._traffic_status = None
         self._cellwan_sim = None
         self._cellwan_sms = None
         self._cellwan_status_timestamp = None
@@ -99,10 +100,18 @@ class Zyxel:
     #
     # ------------------------------------------------------------------------------------------------------------------
 
-    async def retrieve_sim_info(self):
+    async def get_sim_info(self):
         return await self._get_cellwan_sim()
 
-    async def retrieve_sms_messages(self):
+    async def get_sim_status(self):
+        return await self._get_cellwan_status()
+
+    async def get_traffic_status(self):
+        ts = await self._get_traffic_status()
+        print(JSON.dumps(ts))
+        return await self._get_traffic_status()
+
+    async def get_sms_messages(self):
         await self._get_cellwan_sms()
 
     async def get_last_sms(self):
@@ -455,7 +464,6 @@ class Zyxel:
                             else:
                                 if num_retries > 0:
                                     self._UserLogin = None
-
                                     cellwan_sms_data = await self._get_cellwan_sms(num_retries - 1)
                                 else:
                                     msg = f"Request error {url}: {response.status}"
@@ -477,6 +485,67 @@ class Zyxel:
                     await self._parse_cellwan_sms()
 
         return self._cellwan_sms
+
+    async def _get_traffic_status(self, num_retries=MAX_NUM_RETRIES):
+
+        if await self._get_user_login() is not None:
+
+            traffic_status_data = None
+
+            url = "http://" + self._ip_address + "/cgi-bin/DAL?oid=Traffic_Status"
+            headers = {
+                "Accept": 'application/json, text/javascript, */*; q=0.01',
+                "Accept-Encoding": "gzip, deflate",
+                "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "max-age=0",
+                "Connection": 'keep-alive',
+                "Host": self._ip_address,
+                "If-Modified-Since": "Thu, 01 Jun 1970 00:00:00 GMT",
+                "Referer": "http://" + self._ip_address + "/TrafficStatus",
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+            try:
+                async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, cookies=self._cookies) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    traffic_status_data = decoded_zyxel_json
+                                else:
+                                    msg = 'Traffic Status (' + url + ') error: ' + str(zyxel_json)
+                                    code = 803
+                                    raise ZyxelError(msg, code)
+                            else:
+                                if num_retries > 0:
+                                    self._UserLogin = None
+                                    cellwan_sms_data = await self._get_cellwan_sms(num_retries - 1)
+                                else:
+                                    msg = f"Request error {url}: {response.status}"
+                                    code = 802
+                                    raise ZyxelError(msg, code)
+            except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 801
+                    raise ZyxelError(msg, code)
+            except asyncio.TimeoutError:
+                msg = f"Connection timeout {url}"
+                code = 800
+                raise ZyxelError(msg, code)
+
+            if traffic_status_data is not None:
+                traffic_status_data_object = traffic_status_data.get("Object")
+                if traffic_status_data_object is not None:
+                    self._traffic_status = traffic_status_data_object[0]
+
+        return self._traffic_status
 
     async def _get_cellwan_sim(self, num_retries=MAX_NUM_RETRIES):
         """
@@ -591,7 +660,6 @@ class Zyxel:
                                 else:
                                     if num_retries > 0:
                                         self._UserLogin = None
-
                                         cellwan_status_data = await self._get_cellwan_status(num_retries - 1)
                                     else:
                                         msg = f"Request error {url}: {response.status}"
