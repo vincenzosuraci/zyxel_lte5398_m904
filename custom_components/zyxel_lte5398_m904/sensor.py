@@ -23,15 +23,27 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
         self._attr_state_class = description.state_class
         self._attr_suggested_display_precision = description.suggested_display_precision
         self._attr_name = description.name
-        self._attr_unique_id = f"{device_info["name"]}_{description.key}"
+        self._attr_unique_id = f"{device_info['name']}_{description.key}"
         self._attr_icon = description.icon
         self._attr_unit_of_measurement = description.unit_of_measurement
         self._attr_device_info = device_info
 
     @property
-    def state(self):
+    def native_value(self):
         """Ritorna lo stato attuale del sensore."""
-        return self.coordinator.data.get(self._description.name)
+        native_value = self.coordinator.data.get(self._description.name)
+        if self._description.name == ZYXEL_SENSOR_NBR_INFO:
+            native_value = len(native_value)
+        return native_value
+
+    @property
+    def extra_state_attributes(self):
+        extra_state_attributes = None
+        if self._description.name == ZYXEL_SENSOR_NBR_INFO:
+            extra_state_attributes = {
+                "cells": self.coordinator.data.get(self._description.name)
+            }
+        return extra_state_attributes
 
     @property
     def available(self):
@@ -62,6 +74,12 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 
     if data is not None:
 
+        if ZYXEL_SENSOR_NBR_INFO in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_NBR_INFO),
+                name=ZYXEL_SENSOR_NBR_INFO,
+                icon="mdi:broadcast",
+            )))
         if ZYXEL_SENSOR_LAST_SMS in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_LAST_SMS),

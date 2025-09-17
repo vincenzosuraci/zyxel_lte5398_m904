@@ -37,6 +37,7 @@ ZYXEL_SENSOR_ENB = "eNodeB"
 ZYXEL_SENSOR_MAIN_BAND = "Main Band"
 ZYXEL_SENSOR_CA_BANDS = "Carrier Aggregated Bands"
 ZYXEL_SENSOR_LAST_SMS = "Last SMS"
+ZYXEL_SENSOR_NBR_INFO = "Neighbour Cells"
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Device buttons

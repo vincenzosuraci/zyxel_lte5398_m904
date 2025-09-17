@@ -106,8 +106,6 @@ class Zyxel:
         return await self._get_cellwan_status()
 
     async def get_traffic_status(self):
-        ts = await self._get_traffic_status()
-        print(JSON.dumps(ts))
         return await self._get_traffic_status()
 
     async def get_sms_messages(self):
