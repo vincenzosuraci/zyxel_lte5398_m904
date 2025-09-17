@@ -4,7 +4,6 @@ import async_timeout
 import base64
 import os
 import time
-import inspect
 import json as JSON
 from datetime import datetime
 from urllib.parse import quote
