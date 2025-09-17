@@ -71,10 +71,10 @@ class ZyxelDevice(Zyxel):
                 data[ZYXEL_SENSOR_MAIN_BAND] = raw_data["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)"
 
             if "SCC_Info" in raw_data:
-                carrier_aggregation_bands = []
+                carrier_aggregated_bands = []
                 for scc in raw_data["SCC_Info"]:
                     if scc["Enable"]:
-                        carrier_aggregation_bands.append(scc["Band"])
-                data[ZYXEL_SENSOR_CA_BANDS] = ' '.join(carrier_aggregation_bands)
+                        carrier_aggregated_bands.append(scc["Band"])
+                data[ZYXEL_SENSOR_CA_BANDS] = ' '.join(carrier_aggregated_bands)
 
         return data
