@@ -151,7 +151,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
-        identifiers={(DOMAIN, device_id)},  # Usa un identificativo unico per il router
+        identifiers={(DOMAIN, device_id)},
         manufacturer=device_manufacturer,
         model=device_model,
         name=device_name,
@@ -162,8 +162,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         identifiers={(DOMAIN, device_id)},
         name=device_name,
         manufacturer=device_manufacturer,
-        model=device_model,  # Modello del modem (aggiorna con il modello corretto)
-        sw_version=device_sw_version # Versione del software, può essere dinamico se riesci a recuperarlo dal modem
+        model=device_model,
+        sw_version=device_sw_version
     )
 
     sensors = await get_sensors(coordinator, device_info)
