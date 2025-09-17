@@ -40,8 +40,16 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         extra_state_attributes = None
         if self._description.name == ZYXEL_SENSOR_NBR_INFO:
+            cells = {}
+            for cell in self.coordinator.data.get(self._description.name):
+                cells[cell["PhyCellID"]] = {
+                    "RFCN": cell["RFCN"],
+                    "RSSI": cell["RSSI"],
+                    "RSRP": cell["RSRP"],
+                    "RSRQ": cell["RSRQ"],
+                }
             extra_state_attributes = {
-                "cells": self.coordinator.data.get(self._description.name)
+                "cells": cells
             }
         return extra_state_attributes
 
