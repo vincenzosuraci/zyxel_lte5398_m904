@@ -12,10 +12,13 @@ if __name__ == "__main__":
     # Load the .env file
     load_dotenv()
 
+    # Recuperiamo il sito (VETRALLA o ARIANO)
+    site = os.getenv("SITE")
+
     params = {
-        "username": os.getenv("USER"),
-        "password": os.getenv("PASS"),
-        "ip_address": os.getenv("ADDR")
+        "username": os.getenv(f"USER_{site}"),
+        "password": os.getenv(f"PASS_{site}"),
+        "ip_address": os.getenv(f"ADDR_{site}")
     }
 
     from custom_components.zyxel_lte5398_m904.zyxel import Zyxel
