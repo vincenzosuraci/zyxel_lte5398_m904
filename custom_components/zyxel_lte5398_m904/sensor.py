@@ -64,13 +64,13 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
 
         if ZYXEL_SENSOR_LAST_SMS in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_LAST_SMS),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_LAST_SMS),
                 name=ZYXEL_SENSOR_LAST_SMS,
                 icon="mdi:message-text-outline",
             )))
         if ZYXEL_SENSOR_RSRP in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_RSRP),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_RSRP),
                 name=ZYXEL_SENSOR_RSRP,
                 icon="mdi:signal",
                 unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
@@ -80,7 +80,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
             )))
         if ZYXEL_SENSOR_RSRQ in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_RSRQ),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_RSRQ),
                 name=ZYXEL_SENSOR_RSRQ,
                 icon="mdi:signal",
                 suggested_display_precision=0,
@@ -90,7 +90,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
             )))
         if ZYXEL_SENSOR_SINR in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_SINR),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_SINR),
                 name=ZYXEL_SENSOR_SINR,
                 icon="mdi:signal",
                 suggested_display_precision=0,
@@ -100,37 +100,37 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
             )))
         if ZYXEL_SENSOR_ACCESS_TECH in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_ACCESS_TECH),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_ACCESS_TECH),
                 name=ZYXEL_SENSOR_ACCESS_TECH,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_CELL_ID in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_CELL_ID),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_CELL_ID),
                 name=ZYXEL_SENSOR_CELL_ID,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_PHY_CELL_ID in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_PHY_CELL_ID),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_PHY_CELL_ID),
                 name=ZYXEL_SENSOR_PHY_CELL_ID,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_ENB in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_ENB),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_ENB),
                 name=ZYXEL_SENSOR_ENB,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_MAIN_BAND in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_MAIN_BAND),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_MAIN_BAND),
                 name=ZYXEL_SENSOR_MAIN_BAND,
                 icon="mdi:radio-tower"
             )))
         if ZYXEL_SENSOR_CA_BANDS in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
-                key=get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_CA_BANDS),
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_CA_BANDS),
                 name=ZYXEL_SENSOR_CA_BANDS,
                 icon="mdi:radio-tower"
             )))
