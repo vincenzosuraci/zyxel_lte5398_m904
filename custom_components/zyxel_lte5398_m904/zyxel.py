@@ -4,6 +4,7 @@ import async_timeout
 import base64
 import os
 import time
+import inspect
 import json as JSON
 from datetime import datetime
 from urllib.parse import quote
@@ -52,7 +53,6 @@ class Zyxel:
         self._sms_by_YmdHMS = {}
         self._last_parsed_sms = None
 
-        self._session = None
         self._cookies = None
 
     @property
@@ -113,7 +113,7 @@ class Zyxel:
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
                 self._last_parsed_sms = await self._parse_sms(last_sms)
-        return self._last_parsed_sms
+        return self._last_parsed_sms["msg"]
 
     # ------------------------------------------------------------------------------------------------------------------
     #
@@ -141,24 +141,24 @@ class Zyxel:
             }
             try:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()
-                    async with self._session.post(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        await self._async_close_session()
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            reboot_result = decoded_zyxel_json.get("result")
-                            if reboot_result == self.ZCFG_SUCCESS:
-                                return True
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 502
-                            raise ZyxelError(msg, code)
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(url, headers=headers, cookies=self._cookies) as response:
+                            zyxel_json =  await response.json()
+
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                reboot_result = decoded_zyxel_json.get("result")
+                                if reboot_result == self.ZCFG_SUCCESS:
+                                    return True
+                            else:
+                                msg = f"Request error {url}: {response.status}"
+                                code = 502
+                                raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                 msg = f"Connection error {url}: {err}"
                 code = 501
@@ -198,28 +198,27 @@ class Zyxel:
 
             try:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
-                    await self._async_init_session()
-                    async with self._session.delete(url, headers=headers, cookies=self._cookies) as response:
-                        self.debug(response)
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                deleted = True
+                    async with aiohttp.ClientSession() as session:
+                        async with session.delete(url, headers=headers, cookies=self._cookies) as response:
+                            self.debug(await response.text())                            
+                            zyxel_json =  await response.json()                            
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    deleted = True
+                                else:
+                                    msg = 'Cell WAN Delete SMS (' + url + ') error: ' + str(zyxel_json)
+                                    code = 803
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell WAN Delete SMS (' + url + ') error: ' + str(zyxel_json)
-                                code = 803
-                                raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 802
-                            raise ZyxelError(msg, code)
+                                msg = f"Request error {url}: {response.status}"
+                                code = 802
+                                raise ZyxelError(msg, code)                                
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 801
@@ -259,29 +258,28 @@ class Zyxel:
 
             try:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
-                    await self._async_init_session()
-                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                WAIT_STATE_SMS = decoded_zyxel_json.get("Object")[0].get("WAIT_STATE_SMS")
-                                if WAIT_STATE_SMS == "RESUME_SUCC":
-                                    success = True
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, cookies=self._cookies) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    WAIT_STATE_SMS = decoded_zyxel_json.get("Object")[0].get("WAIT_STATE_SMS")
+                                    if WAIT_STATE_SMS == "RESUME_SUCC":
+                                        success = True
+                                else:
+                                    msg = 'Cell WAN Wait State Get (' + url + ') error: ' + str(zyxel_json)
+                                    code = 1203
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell WAN Wait State Get (' + url + ') error: ' + str(zyxel_json)
-                                code = 1203
+                                msg = f"Request error {url}: {response.status}"
+                                code = 1202
                                 raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 1202
-                            raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 1201
@@ -323,28 +321,27 @@ class Zyxel:
 
             try:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
-                    await self._async_init_session()
-                    async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                self._sessionkey = decoded_zyxel_json.get("sessionkey")
-                                success = True
+                    async with aiohttp.ClientSession() as session:
+                        async with session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    self._sessionkey = decoded_zyxel_json.get("sessionkey")
+                                    success = True
+                                else:
+                                    msg = 'Cell WAN Wait State Put (' + url + ') error: ' + str(zyxel_json)
+                                    code = 1103
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell WAN Wait State Put (' + url + ') error: ' + str(zyxel_json)
-                                code = 1103
+                                msg = f"Request error {url}: {response.status}"
+                                code = 1102
                                 raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 1102
-                            raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 1101
@@ -386,28 +383,27 @@ class Zyxel:
 
             try:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
-                    await self._async_init_session()
-                    async with self._session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                self._sessionkey = decoded_zyxel_json.get("sessionkey")
-                                success = True
+                    async with aiohttp.ClientSession() as session:
+                        async with session.put(url, headers=headers, cookies=self._cookies, data=data) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    self._sessionkey = decoded_zyxel_json.get("sessionkey")
+                                    success = True
+                                else:
+                                    msg = 'Cell WAN Put SMS (' + url + ') error: ' + str(zyxel_json)
+                                    code = 1003
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell WAN Put SMS (' + url + ') error: ' + str(zyxel_json)
-                                code = 1003
+                                msg = f"Request error {url}: {response.status}"
+                                code = 1002
                                 raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 1002
-                            raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 1001
@@ -440,32 +436,31 @@ class Zyxel:
             }
             try:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()
-                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                cellwan_sms_data = decoded_zyxel_json
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, cookies=self._cookies) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    cellwan_sms_data = decoded_zyxel_json
+                                else:
+                                    msg = 'Cell WAN SMS (' + url + ') error: ' + str(zyxel_json)
+                                    code = 703
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell WAN SMS (' + url + ') error: ' + str(zyxel_json)
-                                code = 703
-                                raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            if num_retries > 0:
-                                self._UserLogin = None
-                                await self._async_close_session()
-                                cellwan_sms_data = await self._get_cellwan_sms(num_retries - 1)
-                            else:
-                                msg = f"Request error {url}: {response.status}"
-                                code = 702
-                                raise ZyxelError(msg, code)
+                                if num_retries > 0:
+                                    self._UserLogin = None
+
+                                    cellwan_sms_data = await self._get_cellwan_sms(num_retries - 1)
+                                else:
+                                    msg = f"Request error {url}: {response.status}"
+                                    code = 702
+                                    raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 701
@@ -514,32 +509,30 @@ class Zyxel:
             }
             try:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()
-                    async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                        zyxel_json = JSON.loads(await response.text())
-                        if response.status == 200:
-                            decoded_zyxel_str = self.dxc(
-                                zyxel_json.get("content"),
-                                self._aes_key,
-                                zyxel_json.get("iv")
-                            )
-                            decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                            if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                cellwan_sim_data = decoded_zyxel_json
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url, headers=headers, cookies=self._cookies) as response:
+                            zyxel_json =  await response.json()
+                            if response.status == 200:
+                                decoded_zyxel_str = self.dxc(
+                                    zyxel_json.get("content"),
+                                    self._aes_key,
+                                    zyxel_json.get("iv")
+                                )
+                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    cellwan_sim_data = decoded_zyxel_json
+                                else:
+                                    msg = 'Cell Wan SIM (' + url + ') error: ' + str(zyxel_json)
+                                    code = 603
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Cell Wan SIM (' + url + ') error: ' + str(zyxel_json)
-                                code = 603
-                                raise ZyxelError(msg, code)
-                            await self._async_close_session()
-                        else:
-                            if num_retries > 0:
-                                self._UserLogin = None
-                                await self._async_close_session()
-                                cellwan_sim_data = await self._get_cellwan_sim(num_retries - 1)
-                            else:
-                                msg = f"Request error {url}: {response.status}"
-                                code = 602
-                                raise ZyxelError(msg, code)
+                                if num_retries > 0:
+                                    self._UserLogin = None
+                                    cellwan_sim_data = await self._get_cellwan_sim(num_retries - 1)
+                                else:
+                                    msg = f"Request error {url}: {response.status}"
+                                    code = 602
+                                    raise ZyxelError(msg, code)
             except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 601
@@ -579,32 +572,31 @@ class Zyxel:
                 }
                 try:
                     async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                        await self._async_init_session()
-                        async with self._session.get(url, headers=headers, cookies=self._cookies) as response:
-                            zyxel_json = JSON.loads(await response.text())
-                            if response.status == 200:
-                                decoded_zyxel_str = self.dxc(
-                                    zyxel_json.get("content"),
-                                    self._aes_key,
-                                    zyxel_json.get("iv")
-                                )
-                                decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
-                                if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                    cellwan_status_data = decoded_zyxel_json
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(url, headers=headers, cookies=self._cookies) as response:
+                                zyxel_json =  await response.json()
+                                if response.status == 200:
+                                    decoded_zyxel_str = self.dxc(
+                                        zyxel_json.get("content"),
+                                        self._aes_key,
+                                        zyxel_json.get("iv")
+                                    )
+                                    decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
+                                    if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                        cellwan_status_data = decoded_zyxel_json
+                                    else:
+                                        msg = 'Cell Status (' + url + ') error: ' + str(zyxel_json)
+                                        code = 403
+                                        raise ZyxelError(msg, code)
                                 else:
-                                    msg = 'Cell Status (' + url + ') error: ' + str(zyxel_json)
-                                    code = 403
-                                    raise ZyxelError(msg, code)
-                                await self._async_close_session()
-                            else:
-                                if num_retries > 0:
-                                    self._UserLogin = None
-                                    await self._async_close_session()
-                                    cellwan_status_data = await self._get_cellwan_status(num_retries - 1)
-                                else:
-                                    msg = f"Request error {url}: {response.status}"
-                                    code = 402
-                                    raise ZyxelError(msg, code)
+                                    if num_retries > 0:
+                                        self._UserLogin = None
+
+                                        cellwan_status_data = await self._get_cellwan_status(num_retries - 1)
+                                    else:
+                                        msg = f"Request error {url}: {response.status}"
+                                        code = 402
+                                        raise ZyxelError(msg, code)
                 except aiohttp.ClientError as err:
                         msg = f"Connection error {url}: {err}"
                         code = 401
@@ -641,28 +633,28 @@ class Zyxel:
                 }
                 try:
                     async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                        await self._async_init_session()
-                        async with self._session.post(url, json=data, headers=headers) as response:
-                            zyxel_json = JSON.loads(await response.text())
-                            if response.status == 200:
-                                self._UserLogin = zyxel_json
-                                user_login_str = self.dxc(
-                                    self._UserLogin['content'],
-                                    self._aes_key,
-                                    self._UserLogin['iv']
-                                )
-                                user_login_json = JSON.loads(user_login_str)
-                                self._sessionkey = user_login_json.get('sessionkey')
-                                self.info("UserLogin successfully executed")
-                                set_cookie = response.headers.get('Set-Cookie')
-                                if set_cookie:
-                                    session_cookie = set_cookie.split(';')[0]
-                                    cookie_name, cookie_value = session_cookie.split('=')
-                                    self._cookies = {cookie_name: cookie_value}
-                            else:
-                                msg = f"Request error {url}: {response.status}"
-                                code = 302
-                                raise ZyxelAuthError(msg, code)
+                        async with aiohttp.ClientSession() as session:
+                            async with session.post(url, json=data, headers=headers) as response:
+                                zyxel_json =  await response.json()
+                                if response.status == 200:
+                                    self._UserLogin = zyxel_json
+                                    user_login_str = self.dxc(
+                                        self._UserLogin['content'],
+                                        self._aes_key,
+                                        self._UserLogin['iv']
+                                    )
+                                    user_login_json = JSON.loads(user_login_str)
+                                    self._sessionkey = user_login_json.get('sessionkey')
+                                    self.info("UserLogin successfully executed")
+                                    set_cookie = response.headers.get('Set-Cookie')
+                                    if set_cookie:
+                                        session_cookie = set_cookie.split(';')[0]
+                                        cookie_name, cookie_value = session_cookie.split('=')
+                                        self._cookies = {cookie_name: cookie_value}
+                                else:
+                                    msg = f"Request error {url}: {response.status}"
+                                    code = 302
+                                    raise ZyxelAuthError(msg, code)
                 except aiohttp.ClientError as err:
                     msg = f"Connection error {url}: {err}"
                     code = 301
@@ -675,32 +667,32 @@ class Zyxel:
 
     async def _get_basic_information(self):
         if self._BasicInformation is None:
-            await self._async_init_session()  # Inizializza la sessione se non esiste già
-            url = 'http://' + self._ip_address + '/getBasicInformation'
-            try:
-                async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    async with self._session.get(url) as response:
-                        if response.status == 200:
-                            zyxel_json = JSON.loads(await response.text())
-                            if zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                self._BasicInformation = zyxel_json
-                                self.info("Basic Information successfully retrieved")
+            async with aiohttp.ClientSession() as session:  # Inizializza la sessione se non esiste già
+                url = 'http://' + self._ip_address + '/getBasicInformation'
+                try:
+                    async with async_timeout.timeout(10):  # Timeout di 10 secondi
+                        async with session.get(url) as response:
+                            if response.status == 200:
+                                zyxel_json =  await response.json()
+                                if zyxel_json.get("result") == self.ZCFG_SUCCESS:
+                                    self._BasicInformation = zyxel_json
+                                    self.info("Basic Information successfully retrieved")
+                                else:
+                                    msg = 'Basic information (' + url + ') error: ' + str(zyxel_json)
+                                    code = 203
+                                    raise ZyxelError(msg, code)
                             else:
-                                msg = 'Basic information (' + url + ') error: ' + str(zyxel_json)
-                                code = 203
+                                msg = f"Request error {url}: {response.status}"
+                                code = 202
                                 raise ZyxelError(msg, code)
-                        else:
-                            msg = f"Request error {url}: {response.status}"
-                            code = 202
-                            raise ZyxelError(msg, code)
-            except aiohttp.ClientError as err:
-                msg = f"Connection error {url}: {err}"
-                code = 201
-                raise ZyxelError(msg, code)
-            except asyncio.TimeoutError:
-                msg = f"Connection timeout {url}"
-                code = 200
-                raise ZyxelError(msg, code)
+                except aiohttp.ClientError as err:
+                    msg = f"Connection error {url}: {err}"
+                    code = 201
+                    raise ZyxelError(msg, code)
+                except asyncio.TimeoutError:
+                    msg = f"Connection timeout {url}"
+                    code = 200
+                    raise ZyxelError(msg, code)
         return self._BasicInformation
 
     async def _get_rsa_public_key(self):
@@ -709,18 +701,18 @@ class Zyxel:
             url = 'http://' + self._ip_address + '/getRSAPublickKey'
             try:
                 async with async_timeout.timeout(10):  # Timeout di 10 secondi
-                    await self._async_init_session()  # Inizializza la sessione se non esiste già
-                    async with self._session.get(url) as response:
-                        if response.status == 200:
-                            zyxel_json = JSON.loads(await response.text())
-                            if zyxel_json.get("result") != self.ZCFG_SUCCESS:
-                                self.error('RSA Public Key (' + url + ') error: ' + str(zyxel_json))
-                                self.error(str(response.content))
+                    async with aiohttp.ClientSession() as session:  # Inizializza la sessione se non esiste già
+                        async with session.get(url) as response:
+                            if response.status == 200:
+                                zyxel_json =  await response.json()
+                                if zyxel_json.get("result") != self.ZCFG_SUCCESS:
+                                    self.error('RSA Public Key (' + url + ') error: ' + str(zyxel_json))
+                                    self.error(str(response.content))
+                                else:
+                                    self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
+                                    self.info("RSAPublicKey successfully retrieved")
                             else:
-                                self._RSAPublicKey = zyxel_json.get("RSAPublicKey")
-                                self.info("RSAPublicKey successfully retrieved")
-                        else:
-                            self.error(f"Errore nella richiesta {url}: {response.status}")
+                                self.error(f"Errore nella richiesta {url}: {response.status}")
             except aiohttp.ClientError as err:
                 msg = f"Connection error {url}: {err}"
                 code = 101
@@ -875,10 +867,15 @@ class Zyxel:
         inbox_sms_timestamp = inbox_sms_datetime.strftime(output_format)
 
         # SMS Message
-        inbox_sms_encoded_content = inbox_sms.get("Content")
-        inbox_sms_content_hex = [inbox_sms_encoded_content[i:i + 4] for i in
-                                 range(0, len(inbox_sms_encoded_content), 4)]
-        inbox_sms_msg = ''.join(chr(int(char, 16)) for char in inbox_sms_content_hex)
+        inbox_sms_encoded_content = inbox_sms.get("Content", "")
+        try:
+            # tentativo di decodifica esadecimale (ogni 4 caratteri = UTF-16)
+            inbox_sms_content_hex = [inbox_sms_encoded_content[i:i + 4]
+                                     for i in range(0, len(inbox_sms_encoded_content), 4)]
+            inbox_sms_msg = ''.join(chr(int(char, 16)) for char in inbox_sms_content_hex)
+        except ValueError:
+            # se non è hex valido, uso direttamente il contenuto
+            inbox_sms_msg = inbox_sms_encoded_content
 
         return {
             "from": inbox_sms_from,
@@ -886,23 +883,6 @@ class Zyxel:
             "msg": inbox_sms_msg
         }
 
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Session related methods
-    # ------------------------------------------------------------------------------------------------------------------
-
-    async def _async_init_session(self):
-        """ Init session """
-        if self._session is None:
-            self._session = aiohttp.ClientSession()
-            self.debug("Session started")
-
-    async def _async_close_session(self):
-        """ Close session """
-        if self._session:
-            await self._session.close()
-            self._session = None
-            self.debug("Session closed")
 
 
 class ZyxelAuthError(Exception):
