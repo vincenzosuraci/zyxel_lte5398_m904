@@ -42,34 +42,37 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
         if self._description.name == ZYXEL_SENSOR_NBR_INFO:
             carrier_phy_cell_id = self.coordinator.data.get(ZYXEL_SENSOR_PHY_CELL_ID, None)
             scc_list = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [])
-            scc_len = len(scc_list)
-            scc_phy_cell_id_0 = None
-            if scc_len > 0:
-                scc_phy_cell_id_0 = scc_list[0].get("PhyCellID", None)
-            scc_phy_cell_id_1 = None
-            if scc_len > 1:
-                scc_phy_cell_id_1 = scc_list[1].get("PhyCellID", None)
-            scc_phy_cell_id_2 = None
-            if scc_len > 2:
-                scc_phy_cell_id_2 = scc_list[2].get("PhyCellID", None)
+            scc_phy_cell_ids = []
+            for scc_item in scc_list:
+                scc_phy_cell_ids.append(scc_item.get("PhyCellID", None))
             cells = []
             for cell in self.coordinator.data.get(self._description.name):
+                skip_cell = False
                 carrier = 0
                 if cell["PhyCellID"] == carrier_phy_cell_id:
                     carrier = 1
-                elif cell["PhyCellID"] == scc_phy_cell_id_0:
-                    carrier = 2
-                elif cell["PhyCellID"] == scc_phy_cell_id_1:
-                    carrier = 3
-                elif cell["PhyCellID"] == scc_phy_cell_id_2:
-                    carrier = 4
+                else:
+                    for scc_phy_cell_id in scc_phy_cell_ids:
+                        if cell["PhyCellID"] == scc_phy_cell_id:
+                            skip_cell = True
+                if not skip_cell:
+                    cells.append({
+                        "PhyCellID": cell["PhyCellID"],
+                        "Carrier": carrier,
+                        "RFCN": cell["RFCN"],
+                        "RSSI": cell["RSSI"],
+                        "RSRP": cell["RSRP"],
+                        "RSRQ": cell["RSRQ"],
+                    })
+            for i, scc_cell in enumerate(scc_list):
+                carrier = 2 + i
                 cells.append({
-                    "PhyCellID": cell["PhyCellID"],
+                    "PhyCellID": scc_cell["PhyCellID"],
                     "Carrier": carrier,
-                    "RFCN": cell["RFCN"],
-                    "RSSI": cell["RSSI"],
-                    "RSRP": cell["RSRP"],
-                    "RSRQ": cell["RSRQ"],
+                    "RFCN": scc_cell["RFCN"],
+                    "RSSI": scc_cell["RSSI"],
+                    "RSRP": scc_cell["RSRP"],
+                    "RSRQ": scc_cell["RSRQ"],
                 })
             extra_state_attributes = {
                 "cells": cells
