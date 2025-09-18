@@ -43,6 +43,9 @@ class ZyxelDevice(Zyxel):
 
             data = {}
 
+            if "SCC_Info" in raw_data:
+                data[ZYXEL_SENSOR_SCC_INFO] = raw_data.get("SCC_Info")
+
             if "NBR_Info" in raw_data:
                 data[ZYXEL_SENSOR_NBR_INFO] = raw_data.get("NBR_Info")
 

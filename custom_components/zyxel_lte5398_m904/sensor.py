@@ -40,14 +40,29 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         extra_state_attributes = None
         if self._description.name == ZYXEL_SENSOR_NBR_INFO:
-            cells = {}
+            carrier_phy_cell_id = self.coordinator.data.get(ZYXEL_SENSOR_PHY_CELL_ID, None)
+            scc_phy_cell_id_0 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, []).get("0", {}).get("PhyCellID", None)
+            scc_phy_cell_id_1 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [{}]).get("1", {}).get("PhyCellID", None)
+            scc_phy_cell_id_2 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [{}]).get("1", {}).get("PhyCellID", None)
+            cells = []
             for cell in self.coordinator.data.get(self._description.name):
-                cells[cell["PhyCellID"]] = {
+                carrier = 0
+                if cell["PhyCellID"] == carrier_phy_cell_id:
+                    carrier = 1
+                elif cell["PhyCellID"] == scc_phy_cell_id_0:
+                    carrier = 2
+                elif cell["PhyCellID"] == scc_phy_cell_id_1:
+                    carrier = 3
+                elif cell["PhyCellID"] == scc_phy_cell_id_2:
+                    carrier = 4
+                cells.append({
+                    "PhyCellID": cell["PhyCellID"],
+                    "Carrier": carrier,
                     "RFCN": cell["RFCN"],
                     "RSSI": cell["RSSI"],
                     "RSRP": cell["RSRP"],
                     "RSRQ": cell["RSRQ"],
-                }
+                })
             extra_state_attributes = {
                 "cells": cells
             }

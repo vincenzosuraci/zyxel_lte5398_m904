@@ -38,6 +38,7 @@ ZYXEL_SENSOR_MAIN_BAND = "Main Band"
 ZYXEL_SENSOR_CA_BANDS = "Carrier Aggregated Bands"
 ZYXEL_SENSOR_LAST_SMS = "Last SMS"
 ZYXEL_SENSOR_NBR_INFO = "Neighbour Cells"
+ZYXEL_SENSOR_SCC_INFO = "Secondary Component Carrier"
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Device buttons
