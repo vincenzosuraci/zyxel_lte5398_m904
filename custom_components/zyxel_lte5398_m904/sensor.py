@@ -67,7 +67,7 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
             for i, scc_cell in enumerate(scc_list):
                 carrier = 2 + i
                 cells.append({
-                    "PhyCellID": scc_cell["PhyCellID"],
+                    "PhyCellID": scc_cell["PhysicalCellID"],
                     "Carrier": carrier,
                     "RFCN": scc_cell["RFCN"],
                     "RSSI": scc_cell["RSSI"],
