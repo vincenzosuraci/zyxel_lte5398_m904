@@ -44,7 +44,7 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
             scc_list = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [])
             scc_phy_cell_ids = []
             for scc_item in scc_list:
-                scc_phy_cell_ids.append(scc_item.get("PhyCellID", None))
+                scc_phy_cell_ids.append(scc_item.get("PhysicalCellID", None))
             cells = []
             for cell in self.coordinator.data.get(self._description.name):
                 skip_cell = False
