@@ -41,9 +41,17 @@ class ZyxelSensor(CoordinatorEntity, SensorEntity):
         extra_state_attributes = None
         if self._description.name == ZYXEL_SENSOR_NBR_INFO:
             carrier_phy_cell_id = self.coordinator.data.get(ZYXEL_SENSOR_PHY_CELL_ID, None)
-            scc_phy_cell_id_0 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, []).get("0", {}).get("PhyCellID", None)
-            scc_phy_cell_id_1 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [{}]).get("1", {}).get("PhyCellID", None)
-            scc_phy_cell_id_2 = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [{}]).get("1", {}).get("PhyCellID", None)
+            scc_list = self.coordinator.data.get(ZYXEL_SENSOR_SCC_INFO, [])
+            scc_len = len(scc_list)
+            scc_phy_cell_id_0 = None
+            if scc_len > 0:
+                scc_phy_cell_id_0 = scc_list[0].get("PhyCellID", None)
+            scc_phy_cell_id_1 = None
+            if scc_len > 1:
+                scc_phy_cell_id_1 = scc_list[1].get("PhyCellID", None)
+            scc_phy_cell_id_2 = None
+            if scc_len > 2:
+                scc_phy_cell_id_2 = scc_list[2].get("PhyCellID", None)
             cells = []
             for cell in self.coordinator.data.get(self._description.name):
                 carrier = 0
