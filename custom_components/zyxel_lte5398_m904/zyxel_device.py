@@ -87,6 +87,6 @@ class ZyxelDevice(Zyxel):
                 data[ZYXEL_SENSOR_DOWNLOAD_SPEED] = raw_data.get("DOWNLOAD_SPEED")
 
             if "UPLOAD_SPEED" in raw_data:
-                data[ZYXEL_SENSOR_UPLOAD_SPEED] = raw_data.get("DOWNLOAD_SPEED")
+                data[ZYXEL_SENSOR_UPLOAD_SPEED] = raw_data.get("UPLOAD_SPEED")
 
         return data
