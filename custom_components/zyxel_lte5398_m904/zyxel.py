@@ -259,10 +259,15 @@ class Zyxel:
         bytes_sent = traffic_status["bridgingStatus"][0]["BytesSent"]
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
+            self.warning(f"diff_seconds {diff_seconds}")
             diff_bytes_received = bytes_received - self._bytes_received
+            self.warning(f"diff_bytes_received {diff_bytes_received}")
             download_speed = diff_bytes_received / ( diff_seconds * 1000 )
+            self.warning(f"download_speed {download_speed}")
             diff_bytes_sent = bytes_sent - self._bytes_sent
+            self.warning(f"diff_bytes_sent {diff_bytes_received}")
             upload_speed = diff_bytes_sent / (diff_seconds * 1000)
+            self.warning(f"upload_speed {upload_speed}")
             down_up_load_speed["download_speed"] = download_speed
             down_up_load_speed["upload_speed"] = upload_speed
         self._bytes_time = now
