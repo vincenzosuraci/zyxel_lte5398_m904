@@ -1,6 +1,7 @@
 import logging
 from homeassistant.components.sensor import SensorEntityDescription, SensorStateClass, SensorEntity
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS
+from homeassistant.const import UnitOfDataRate
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -125,7 +126,6 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_RSRP),
                 name=ZYXEL_SENSOR_RSRP,
                 icon="mdi:signal",
-                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 suggested_display_precision=0,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
@@ -137,7 +137,6 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 name=ZYXEL_SENSOR_RSRQ,
                 icon="mdi:signal",
                 suggested_display_precision=0,
-                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                 state_class=SensorStateClass.MEASUREMENT
@@ -148,7 +147,6 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 name=ZYXEL_SENSOR_SINR,
                 icon="mdi:signal",
                 suggested_display_precision=0,
-                unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                 state_class=SensorStateClass.MEASUREMENT
@@ -193,13 +191,21 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_DOWNLOAD_SPEED),
                 name=ZYXEL_SENSOR_DOWNLOAD_SPEED,
-                icon="mdi:progress-download"
+                icon="mdi:progress-download",
+                suggested_display_precision=3,
+                native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
+                device_class=SensorDeviceClass.DATA_RATE,
+                state_class=SensorStateClass.MEASUREMENT
             )))
         if ZYXEL_SENSOR_UPLOAD_SPEED in data:
             sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_UPLOAD_SPEED),
                 name=ZYXEL_SENSOR_UPLOAD_SPEED,
-                icon="mdi:progress-upload"
+                icon="mdi:progress-upload",
+                suggested_display_precision=3,
+                native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
+                device_class=SensorDeviceClass.DATA_RATE,
+                state_class=SensorStateClass.MEASUREMENT
             )))
 
     return sensors
