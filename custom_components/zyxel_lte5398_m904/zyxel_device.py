@@ -83,4 +83,10 @@ class ZyxelDevice(Zyxel):
                         carrier_aggregated_bands.append(scc["Band"])
                 data[ZYXEL_SENSOR_CA_BANDS] = ' '.join(carrier_aggregated_bands)
 
+            if "DOWNLOAD_SPEED" in raw_data:
+                data[ZYXEL_SENSOR_DOWNLOAD_SPEED] = raw_data.get("DOWNLOAD_SPEED")
+
+            if "UPLOAD_SPEED" in raw_data:
+                data[ZYXEL_SENSOR_UPLOAD_SPEED] = raw_data.get("DOWNLOAD_SPEED")
+
         return data

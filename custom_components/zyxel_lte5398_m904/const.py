@@ -39,6 +39,8 @@ ZYXEL_SENSOR_CA_BANDS = "Carrier Aggregated Bands"
 ZYXEL_SENSOR_LAST_SMS = "Last SMS"
 ZYXEL_SENSOR_NBR_INFO = "Neighbour Cells"
 ZYXEL_SENSOR_SCC_INFO = "Secondary Component Carrier"
+ZYXEL_SENSOR_DOWNLOAD_SPEED = "Download Speed"
+ZYXEL_SENSOR_UPLOAD_SPEED = "Upload Speed"
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Device buttons

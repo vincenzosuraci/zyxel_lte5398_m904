@@ -53,6 +53,10 @@ class Zyxel:
         self._sms_by_YmdHMS = {}
         self._last_parsed_sms = None
 
+        self._bytes_time = None
+        self._bytes_sent = None
+        self._bytes_received = None
+
         self._cookies = None
 
     @property
@@ -82,6 +86,10 @@ class Zyxel:
     async def fetch_data(self):
         # Recupero dei dati sulle celle
         data = await self._get_cellwan_status()
+        # Recupero dei dati sul traffico
+        down_up_load_speed = await self._get_down_up_load_speed()
+        data["DOWNLOAD_SPEED"] = down_up_load_speed["download_speed"]
+        data["UPLOAD_SPEED"] = down_up_load_speed["upload_speed"]
         # Recupero dei dati sull'ultimo SMS
         if self._last_parsed_sms is None:
             data["LAST_SMS_MSG"] = None
@@ -120,6 +128,28 @@ class Zyxel:
                 last_sms = await self._delete_all_sms_but_last()
                 self._last_parsed_sms = await self._parse_sms(last_sms)
         return self._last_parsed_sms["msg"]
+
+    async def _get_down_up_load_speed(self):
+        down_up_load_speed = {
+                "download_speed": None,
+                "upload_speed": None
+            }
+        traffic_status = await self._get_traffic_status()
+        now = time.time()
+        bytes_received = traffic_status["bridgingStatus"][0]["BytesReceived"]
+        bytes_sent = traffic_status["bridgingStatus"][0]["BytesSent"]
+        if self._bytes_time is not None:
+            diff_seconds = now - self._bytes_time
+            diff_bytes_received = bytes_received - self._bytes_received
+            download_speed = ( diff_bytes_received / diff_seconds ) / ( diff_seconds * 1000 )
+            diff_bytes_sent = bytes_sent - self._bytes_sent
+            upload_speed = (diff_bytes_sent / diff_seconds) / (diff_seconds * 1000)
+            down_up_load_speed["download_speed"] = download_speed
+            down_up_load_speed["upload_speed"] = upload_speed
+        self._bytes_time = now
+        self._bytes_received = bytes_received
+        self._bytes_time = bytes_sent
+        return down_up_load_speed
 
     # ------------------------------------------------------------------------------------------------------------------
     #

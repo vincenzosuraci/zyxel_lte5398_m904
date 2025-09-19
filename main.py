@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 time.sleep(5)
             sleep = True
             traffic_status = asyncio.run(zyxel.get_traffic_status())
-            print(json.dumps(traffic_status))
+            print(json.dumps(traffic_status["bridgingStatus"][0]))
 
         elif action == "reboot":
 

@@ -186,6 +186,18 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 name=ZYXEL_SENSOR_CA_BANDS,
                 icon="mdi:radio-tower"
             )))
+        if ZYXEL_SENSOR_DOWNLOAD_SPEED in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_DOWNLOAD_SPEED),
+                name=ZYXEL_SENSOR_DOWNLOAD_SPEED,
+                icon="mdi:progress-download"
+            )))
+        if ZYXEL_SENSOR_UPLOAD_SPEED in data:
+            sensors.append(ZyxelSensor(coordinator, device_info, SensorEntityDescription(
+                key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_UPLOAD_SPEED),
+                name=ZYXEL_SENSOR_UPLOAD_SPEED,
+                icon="mdi:progress-upload"
+            )))
 
     return sensors
 
