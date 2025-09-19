@@ -255,8 +255,8 @@ class Zyxel:
         }
         traffic_status = await self._get_traffic_status()
         now = time.time()
-        bytes_received = traffic_status["bridgingStatus"][0]["BytesReceived"]
-        bytes_sent = traffic_status["bridgingStatus"][0]["BytesSent"]
+        bytes_received = traffic_status["ipIfaceSt"][1]["BytesReceived"]
+        bytes_sent = traffic_status["ipIfaceSt"][1]["BytesSent"]
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
             diff_bytes_received = bytes_received - self._bytes_received
