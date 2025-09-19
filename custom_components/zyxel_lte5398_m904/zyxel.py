@@ -148,7 +148,7 @@ class Zyxel:
             down_up_load_speed["upload_speed"] = upload_speed
         self._bytes_time = now
         self._bytes_received = bytes_received
-        self._bytes_time = bytes_sent
+        self._bytes_sent = bytes_sent
         return down_up_load_speed
 
     # ------------------------------------------------------------------------------------------------------------------
