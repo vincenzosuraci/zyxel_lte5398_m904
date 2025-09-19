@@ -192,7 +192,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_DOWNLOAD_SPEED),
                 name=ZYXEL_SENSOR_DOWNLOAD_SPEED,
                 icon="mdi:progress-download",
-                suggested_display_precision=3,
+                suggested_display_precision=0,
                 native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
                 device_class=SensorDeviceClass.DATA_RATE,
                 state_class=SensorStateClass.MEASUREMENT
@@ -202,7 +202,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 key=await get_sensor_key(coordinator.zyxel_device, ZYXEL_SENSOR_UPLOAD_SPEED),
                 name=ZYXEL_SENSOR_UPLOAD_SPEED,
                 icon="mdi:progress-upload",
-                suggested_display_precision=3,
+                suggested_display_precision=0,
                 native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
                 device_class=SensorDeviceClass.DATA_RATE,
                 state_class=SensorStateClass.MEASUREMENT

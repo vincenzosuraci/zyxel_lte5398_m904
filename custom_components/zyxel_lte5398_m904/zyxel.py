@@ -261,10 +261,10 @@ class Zyxel:
             diff_seconds = now - self._bytes_time
             diff_bytes_received = bytes_received - self._bytes_received
             upload_speed = diff_bytes_received / ( diff_seconds * 1000 )
-            down_up_load_speed["upload_speed"] = round(upload_speed,3)
+            down_up_load_speed["upload_speed"] = round(upload_speed,0)
             diff_bytes_sent = bytes_sent - self._bytes_sent
             download_speed = diff_bytes_sent / (diff_seconds * 1000)
-            down_up_load_speed["download_speed"] = round(download_speed, 3)
+            down_up_load_speed["download_speed"] = round(download_speed,0)
         self._bytes_time = now
         self._bytes_received = bytes_received
         self._bytes_sent = bytes_sent
