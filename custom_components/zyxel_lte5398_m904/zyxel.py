@@ -141,9 +141,9 @@ class Zyxel:
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
             diff_bytes_received = bytes_received - self._bytes_received
-            download_speed = ( diff_bytes_received / diff_seconds ) / ( diff_seconds * 1000 )
+            download_speed = diff_bytes_received / ( diff_seconds * 1000 )
             diff_bytes_sent = bytes_sent - self._bytes_sent
-            upload_speed = (diff_bytes_sent / diff_seconds) / (diff_seconds * 1000)
+            upload_speed = diff_bytes_sent / (diff_seconds * 1000)
             down_up_load_speed["download_speed"] = download_speed
             down_up_load_speed["upload_speed"] = upload_speed
         self._bytes_time = now
