@@ -129,28 +129,6 @@ class Zyxel:
                 self._last_parsed_sms = await self._parse_sms(last_sms)
         return self._last_parsed_sms["msg"]
 
-    async def _get_down_up_load_speed(self):
-        down_up_load_speed = {
-                "download_speed": None,
-                "upload_speed": None
-            }
-        traffic_status = await self._get_traffic_status()
-        now = time.time()
-        bytes_received = traffic_status["bridgingStatus"][0]["BytesReceived"]
-        bytes_sent = traffic_status["bridgingStatus"][0]["BytesSent"]
-        if self._bytes_time is not None:
-            diff_seconds = now - self._bytes_time
-            diff_bytes_received = bytes_received - self._bytes_received
-            download_speed = diff_bytes_received / ( diff_seconds * 1000 )
-            diff_bytes_sent = bytes_sent - self._bytes_sent
-            upload_speed = diff_bytes_sent / (diff_seconds * 1000)
-            down_up_load_speed["download_speed"] = download_speed
-            down_up_load_speed["upload_speed"] = upload_speed
-        self._bytes_time = now
-        self._bytes_received = bytes_received
-        self._bytes_sent = bytes_sent
-        return down_up_load_speed
-
     # ------------------------------------------------------------------------------------------------------------------
     #
     # Reboot
@@ -269,6 +247,28 @@ class Zyxel:
     # ------------------------------------------------------------------------------------------------------------------
     # Get methods
     # ------------------------------------------------------------------------------------------------------------------
+
+    async def _get_down_up_load_speed(self):
+        down_up_load_speed = {
+            "download_speed": None,
+            "upload_speed": None
+        }
+        traffic_status = await self._get_traffic_status()
+        now = time.time()
+        bytes_received = traffic_status["bridgingStatus"][0]["BytesReceived"]
+        bytes_sent = traffic_status["bridgingStatus"][0]["BytesSent"]
+        if self._bytes_time is not None:
+            diff_seconds = now - self._bytes_time
+            diff_bytes_received = bytes_received - self._bytes_received
+            download_speed = diff_bytes_received / ( diff_seconds * 1000 )
+            diff_bytes_sent = bytes_sent - self._bytes_sent
+            upload_speed = diff_bytes_sent / (diff_seconds * 1000)
+            down_up_load_speed["download_speed"] = download_speed
+            down_up_load_speed["upload_speed"] = upload_speed
+        self._bytes_time = now
+        self._bytes_received = bytes_received
+        self._bytes_sent = bytes_sent
+        return down_up_load_speed
 
     async def _get_cellwan_wait_state(self):
 

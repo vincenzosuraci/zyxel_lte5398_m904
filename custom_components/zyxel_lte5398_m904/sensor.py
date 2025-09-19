@@ -126,6 +126,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 name=ZYXEL_SENSOR_RSRP,
                 icon="mdi:signal",
                 unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 suggested_display_precision=0,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                 state_class=SensorStateClass.MEASUREMENT
@@ -137,6 +138,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 icon="mdi:signal",
                 suggested_display_precision=0,
                 unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                 state_class=SensorStateClass.MEASUREMENT
             )))
@@ -147,6 +149,7 @@ async def get_sensors(coordinator: ZyxelCoordinator, device_info: DeviceInfo):
                 icon="mdi:signal",
                 suggested_display_precision=0,
                 unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
+                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                 state_class=SensorStateClass.MEASUREMENT
             )))
