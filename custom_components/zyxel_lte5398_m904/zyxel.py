@@ -257,14 +257,24 @@ class Zyxel:
         now = time.time()
         bytes_received = traffic_status["ipIfaceSt"][1]["BytesReceived"]
         bytes_sent = traffic_status["ipIfaceSt"][1]["BytesSent"]
+
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
+
             diff_bytes_received = bytes_received - self._bytes_received
-            download_speed = diff_bytes_received / ( diff_seconds * 1000 )
-            down_up_load_speed["download_speed"] = round(download_speed,0)
+            # Controllo per assicurarsi che il valore non sia negativo
+            if diff_bytes_received < 0:
+                diff_bytes_received = 0
+            download_speed = diff_bytes_received / (diff_seconds * 1000)
+            down_up_load_speed["download_speed"] = round(download_speed, 0)
+
             diff_bytes_sent = bytes_sent - self._bytes_sent
+            # Controllo per assicurarsi che il valore non sia negativo
+            if diff_bytes_sent < 0:
+                diff_bytes_sent = 0
             upload_speed = diff_bytes_sent / (diff_seconds * 1000)
-            down_up_load_speed["upload_speed"] = round(upload_speed,0)
+            down_up_load_speed["upload_speed"] = round(upload_speed, 0)
+
         self._bytes_time = now
         self._bytes_received = bytes_received
         self._bytes_sent = bytes_sent
