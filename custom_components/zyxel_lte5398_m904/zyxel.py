@@ -128,11 +128,9 @@ class Zyxel:
     async def get_last_sms_wrapper(self):
         """Wrapper per catturare il risultato di get_last_sms()."""
         try:
-            self._last_sms_data = await self.get_last_sms()
+            await self.get_last_sms()
         except Exception as e:
             self.error(f"Errore durante il fetching degli SMS: {e}")
-            self._last_sms_data = None
-        return self._last_sms_data
 
     # ------------------------------------------------------------------------------------------------------------------
     #
@@ -160,7 +158,7 @@ class Zyxel:
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
                 self._last_parsed_sms = await self._parse_sms(last_sms)
-        return self._last_parsed_sms["msg"]
+        return self._last_parsed_sms["timestamp"] + " - " + self._last_parsed_sms["msg"]
 
     # ------------------------------------------------------------------------------------------------------------------
     #
