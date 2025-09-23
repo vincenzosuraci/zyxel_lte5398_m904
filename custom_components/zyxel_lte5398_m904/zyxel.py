@@ -50,8 +50,9 @@ class Zyxel:
         self._cellwan_status_timestamp = None
         self._sessionkey = None
 
+        self._sms_task = None
         self._sms_by_YmdHMS = {}
-        self._last_parsed_sms = None
+        self._last_parsed_sms = {}
 
         self._bytes_time = None
         self._bytes_sent = None
@@ -88,11 +89,11 @@ class Zyxel:
         tasks = [
             self._get_cellwan_status(),
             self._get_down_up_load_speed(),
-            self.get_last_sms(),
+            self._start_sms_fetch()
         ]
 
         # Aspetta che tutti i task si completino
-        cellwan_data, speed_data, last_sms_msg = await asyncio.gather(*tasks)
+        cellwan_data, speed_data, sms_fetch = await asyncio.gather(*tasks)
 
         # Recupero dei dati sulle celle
         data = cellwan_data
@@ -102,7 +103,7 @@ class Zyxel:
         data["UPLOAD_SPEED"] = speed_data.get("upload_speed")
 
         # Recupero dei dati sull'ultimo SMS
-        data["LAST_SMS_MSG"] = last_sms_msg
+        data["LAST_SMS_MSG"] = self._last_parsed_sms.get('msg', None)
 
         return data
 
@@ -113,6 +114,29 @@ class Zyxel:
     # ------------------------------------------------------------------------------------------------------------------
     #
     # Retrieve (SMS) Messages
+    #
+    # ------------------------------------------------------------------------------------------------------------------
+
+    async def _start_sms_fetch(self):
+        """Avvia il fetching degli SMS in un task separato."""
+        if self._sms_task is None or self._sms_task.done():
+            print("Avvio del task per il fetching degli SMS.")
+            self._sms_task = asyncio.create_task(self.get_last_sms_wrapper())
+        else:
+            print("Il task per il fetching degli SMS è già in esecuzione.")
+
+    async def get_last_sms_wrapper(self):
+        """Wrapper per catturare il risultato di get_last_sms()."""
+        try:
+            self._last_sms_data = await self.get_last_sms()
+        except Exception as e:
+            self.error(f"Errore durante il fetching degli SMS: {e}")
+            self._last_sms_data = None
+        return self._last_sms_data
+
+    # ------------------------------------------------------------------------------------------------------------------
+    #
+    # get Methods
     #
     # ------------------------------------------------------------------------------------------------------------------
 
