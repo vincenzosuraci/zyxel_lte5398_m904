@@ -120,10 +120,10 @@ class Zyxel:
     async def _start_sms_fetch(self):
         """Avvia il fetching degli SMS in un task separato."""
         if self._sms_task is None or self._sms_task.done():
-            print("Avvio del task per il fetching degli SMS.")
+            self.debug("Avvio del task per il fetching degli SMS.")
             self._sms_task = asyncio.create_task(self.get_last_sms_wrapper())
         else:
-            print("Il task per il fetching degli SMS è già in esecuzione.")
+            self.debug("Il task per il fetching degli SMS è già in esecuzione.")
 
     async def get_last_sms_wrapper(self):
         """Wrapper per catturare il risultato di get_last_sms()."""
