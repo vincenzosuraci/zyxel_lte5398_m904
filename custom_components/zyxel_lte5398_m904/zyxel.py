@@ -103,7 +103,7 @@ class Zyxel:
         data["UPLOAD_SPEED"] = speed_data.get("upload_speed")
 
         # Recupero dei dati sull'ultimo SMS
-        data["LAST_SMS_MSG"] = self._last_parsed_sms.get('msg', None)
+        data["LAST_SMS_MSG"] = self.get_last_sms_timestamp_and_msg()
 
         return data
 
@@ -158,7 +158,17 @@ class Zyxel:
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
                 self._last_parsed_sms = await self._parse_sms(last_sms)
-        return self._last_parsed_sms["timestamp"] + " - " + self._last_parsed_sms["msg"]
+        return self.get_last_sms_timestamp_and_msg()
+
+    def get_last_sms_timestamp_and_msg(self):
+        timestamp = self._last_parsed_sms.get("timestamp", None)
+        msg = self._last_parsed_sms.get("msg", None)
+        if msg is not None:
+            if timestamp is not None:
+                return timestamp + " - "  + msg
+            else:
+                return msg
+        return None
 
     # ------------------------------------------------------------------------------------------------------------------
     #
