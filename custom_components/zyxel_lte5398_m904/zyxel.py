@@ -84,14 +84,26 @@ class Zyxel:
         return basic_information.get("SoftwareVersion")
 
     async def fetch_data(self):
+        # Esegui il recupero dei dati in parallelo
+        tasks = [
+            self._get_cellwan_status(),
+            self._get_down_up_load_speed(),
+            self.get_last_sms(),
+        ]
+
+        # Aspetta che tutti i task si completino
+        cellwan_data, speed_data, last_sms_msg = await asyncio.gather(*tasks)
+
         # Recupero dei dati sulle celle
-        data = await self._get_cellwan_status()
+        data = cellwan_data
+
         # Recupero dei dati sul traffico
-        down_up_load_speed = await self._get_down_up_load_speed()
-        data["DOWNLOAD_SPEED"] = down_up_load_speed.get("download_speed")
-        data["UPLOAD_SPEED"] = down_up_load_speed.get("upload_speed")
+        data["DOWNLOAD_SPEED"] = speed_data.get("download_speed")
+        data["UPLOAD_SPEED"] = speed_data.get("upload_speed")
+
         # Recupero dei dati sull'ultimo SMS
-        data["LAST_SMS_MSG"] = await self.get_last_sms()
+        data["LAST_SMS_MSG"] = last_sms_msg
+
         return data
 
     async def test_connection(self):
@@ -120,7 +132,7 @@ class Zyxel:
         if await self._put_cellwan_wait_state():
             if await self._put_cellwan_sms():
                 while not await self._get_cellwan_wait_state():
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
                 await self._get_cellwan_sms()
                 last_sms = await self._delete_all_sms_but_last()
                 self._last_parsed_sms = await self._parse_sms(last_sms)
