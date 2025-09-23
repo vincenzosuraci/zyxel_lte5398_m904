@@ -34,8 +34,8 @@ if __name__ == "__main__":
     actions = [
         #"get_sim_info",
         #"get_sim_status",
-        #"get_last_sms",
-        "get_traffic_status",
+        "get_last_sms",
+        #"get_traffic_status",
         #"reboot",
     ]
 
@@ -73,6 +73,7 @@ if __name__ == "__main__":
                 time.sleep(5)
             sleep = True
             last_sms = asyncio.run(zyxel.get_last_sms())
+            print(last_sms)
 
         elif action == "get_traffic_status":
 

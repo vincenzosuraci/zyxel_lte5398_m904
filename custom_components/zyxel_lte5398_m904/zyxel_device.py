@@ -45,12 +45,14 @@ class ZyxelDevice(Zyxel):
 
             if "SCC_Info" in raw_data:
                 data[ZYXEL_SENSOR_SCC_INFO] = raw_data.get("SCC_Info")
+                carrier_aggregated_bands = []
+                for scc in data[ZYXEL_SENSOR_SCC_INFO]:
+                    if scc["Enable"]:
+                        carrier_aggregated_bands.append(scc["Band"])
+                data[ZYXEL_SENSOR_CA_BANDS] = ' '.join(carrier_aggregated_bands)
 
             if "NBR_Info" in raw_data:
                 data[ZYXEL_SENSOR_NBR_INFO] = raw_data.get("NBR_Info")
-
-            if "LAST_SMS_MSG" in raw_data:
-                data[ZYXEL_SENSOR_LAST_SMS] = str(raw_data.get("LAST_SMS_MSG"))
 
             if "INTF_RSRP" in raw_data:
                 data[ZYXEL_SENSOR_RSRP] = int(raw_data.get("INTF_RSRP"))
@@ -76,17 +78,13 @@ class ZyxelDevice(Zyxel):
                 dl = 5 * (int(raw_data["INTF_Downlink_Bandwidth"]) - 1)
                 data[ZYXEL_SENSOR_MAIN_BAND] = raw_data["INTF_Current_Band"] + "(" + str(dl) + "MHz/" + str(ul) + "MHz)"
 
-            if "SCC_Info" in raw_data:
-                carrier_aggregated_bands = []
-                for scc in raw_data["SCC_Info"]:
-                    if scc["Enable"]:
-                        carrier_aggregated_bands.append(scc["Band"])
-                data[ZYXEL_SENSOR_CA_BANDS] = ' '.join(carrier_aggregated_bands)
-
             if "DOWNLOAD_SPEED" in raw_data:
                 data[ZYXEL_SENSOR_DOWNLOAD_SPEED] = raw_data.get("DOWNLOAD_SPEED")
 
             if "UPLOAD_SPEED" in raw_data:
                 data[ZYXEL_SENSOR_UPLOAD_SPEED] = raw_data.get("UPLOAD_SPEED")
+
+            if "LAST_SMS_MSG" in raw_data:
+                data[ZYXEL_SENSOR_LAST_SMS] = str(raw_data.get("LAST_SMS_MSG"))
 
         return data

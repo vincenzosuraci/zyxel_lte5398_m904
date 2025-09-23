@@ -18,7 +18,7 @@ class ZyxelButton(CoordinatorEntity, ButtonEntity):
         self._description = description
         self._attr_device_class = description.device_class
         self._attr_name = description.name
-        self._attr_unique_id = f"{device_info["name"]}_{description.key}"
+        self._attr_unique_id = f"{device_info['name']}_{description.key}"
         self._attr_icon = description.icon
         self._attr_device_info = device_info
 

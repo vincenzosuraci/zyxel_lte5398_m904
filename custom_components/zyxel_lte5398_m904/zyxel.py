@@ -91,10 +91,7 @@ class Zyxel:
         data["DOWNLOAD_SPEED"] = down_up_load_speed.get("download_speed")
         data["UPLOAD_SPEED"] = down_up_load_speed.get("upload_speed")
         # Recupero dei dati sull'ultimo SMS
-        if self._last_parsed_sms is None:
-            data["LAST_SMS_MSG"] = None
-        else:
-            data["LAST_SMS_MSG"] = self._last_parsed_sms.get('msg')
+        data["LAST_SMS_MSG"] = await self.get_last_sms()
         return data
 
     async def test_connection(self):
@@ -214,7 +211,6 @@ class Zyxel:
                 async with async_timeout.timeout(30):  # Timeout di 30 secondi
                     async with aiohttp.ClientSession() as session:
                         async with session.delete(url, headers=headers, cookies=self._cookies) as response:
-                            self.debug(await response.text())                            
                             zyxel_json =  await response.json()                            
                             if response.status == 200:
                                 decoded_zyxel_str = self.dxc(
@@ -315,8 +311,8 @@ class Zyxel:
                                 )
                                 decoded_zyxel_json = JSON.loads(decoded_zyxel_str)
                                 if decoded_zyxel_json.get("result") == self.ZCFG_SUCCESS:
-                                    WAIT_STATE_SMS = decoded_zyxel_json.get("Object")[0].get("WAIT_STATE_SMS")
-                                    if WAIT_STATE_SMS == "RESUME_SUCC":
+                                    wait_state_sms = decoded_zyxel_json.get("Object")[0].get("WAIT_STATE_SMS")
+                                    if wait_state_sms == "RESUME_SUCC":
                                         success = True
                                 else:
                                     msg = 'Cell WAN Wait State Get (' + url + ') error: ' + str(zyxel_json)
@@ -922,7 +918,7 @@ class Zyxel:
             sms = self._sms_by_YmdHMS[YmdHMS]
             if delete:
                 parsed_sms = await self._parse_sms(sms)
-                self.debug(f"Deleting sms: {parsed_sms}")
+                self.info(f"Deleting sms: {parsed_sms}")
                 sms_obj_index = str(sms.get("ObjIndex"))
                 if await self.delete_sms(ObjIndex=sms_obj_index):
                     self._sms_by_YmdHMS.pop(YmdHMS)
