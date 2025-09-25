@@ -316,11 +316,9 @@ class Zyxel:
         bytes_received = 0
         bytes_sent = 0
         ip_if_stats = traffic_status.get("ipIfaceSt", None)
-        if ip_if_stats is not None:
-            ip_if_stats_1 = ip_if_stats.get(1, None)
-            if ip_if_stats_1 is not None:
-                bytes_received = ip_if_stats_1.get("BytesReceived", 0)
-                bytes_sent = ip_if_stats_1.get("BytesSent", 0)
+        if ip_if_stats is not None and len(ip_if_stats) > 0:
+            bytes_received = ip_if_stats[0].get("BytesReceived", 0)
+            bytes_sent = ip_if_stats[0].get("BytesSent", 0)
 
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
