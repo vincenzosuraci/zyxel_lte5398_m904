@@ -289,14 +289,20 @@ class Zyxel:
     # ------------------------------------------------------------------------------------------------------------------
 
     async def _get_down_up_load_speed(self):
+        now = time.time()
         down_up_load_speed = {
             "download_speed": None,
             "upload_speed": None
         }
         traffic_status = await self._get_traffic_status()
-        now = time.time()
-        bytes_received = traffic_status["ipIfaceSt"][1]["BytesReceived"]
-        bytes_sent = traffic_status["ipIfaceSt"][1]["BytesSent"]
+        bytes_received = 0
+        bytes_sent = 0
+        ip_if_stats = traffic_status.get("ipIfaceSt", None)
+        if ip_if_stats is not None:
+            ip_if_stats_1 = ip_if_stats.get(1, None)
+            if ip_if_stats_1 is not None:
+                bytes_received = ip_if_stats_1.get("BytesReceived", 0)
+                bytes_sent = ip_if_stats_1.get("BytesSent", 0)
 
         if self._bytes_time is not None:
             diff_seconds = now - self._bytes_time
