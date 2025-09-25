@@ -21,6 +21,11 @@ from Cryptodome.Util.Padding import pad, unpad
 
 class Zyxel:
 
+    # Funzioni attivabili/diattivabili
+    CELLS_STATS_ENABLED = True
+    SPEED_STATS_ENABLED = True
+    SMS_MESSAGE_ENABLED = False
+
     # Massimo numero di prove di login
     MAX_NUM_RETRIES = 1
 
@@ -85,25 +90,38 @@ class Zyxel:
         return basic_information.get("SoftwareVersion")
 
     async def fetch_data(self):
-        # Esegui il recupero dei dati in parallelo
-        tasks = [
-            self._get_cellwan_status(),
-            self._get_down_up_load_speed(),
-            self._start_sms_fetch()
-        ]
+
+        task_map = {}
+
+        if self.CELLS_STATS_ENABLED:
+            task_map["CELLS_STATS"] = self._get_cellwan_status()
+
+        if self.SPEED_STATS_ENABLED:
+            task_map["SPEED_STATS"] = self._get_down_up_load_speed()
+
+        if self.SMS_MESSAGE_ENABLED:
+            task_map["SMS_MESSAGE_ENABLED"] = self._start_sms_fetch()
 
         # Aspetta che tutti i task si completino
-        cellwan_data, speed_data, sms_fetch = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*task_map.values())
+
+        # Creiamo un dizionario con il nome del task e il risultato
+        named_results = dict(zip(task_map.keys(), results))
+
+        data = {}
 
         # Recupero dei dati sulle celle
-        data = cellwan_data
+        if self.CELLS_STATS_ENABLED:
+            data = named_results.get("CELLS_STATS")
 
         # Recupero dei dati sul traffico
-        data["DOWNLOAD_SPEED"] = speed_data.get("download_speed")
-        data["UPLOAD_SPEED"] = speed_data.get("upload_speed")
+        if self.SPEED_STATS_ENABLED:
+            data["DOWNLOAD_SPEED"] = named_results.get("SPEED_STATS").get("download_speed")
+            data["UPLOAD_SPEED"] = named_results.get("SPEED_STATS").get("upload_speed")
 
         # Recupero dei dati sull'ultimo SMS
-        data["LAST_SMS_MSG"] = self.get_last_sms_timestamp_and_msg()
+        if self.SMS_MESSAGE_ENABLED:
+            data["LAST_SMS_MSG"] = self.get_last_sms_timestamp_and_msg()
 
         return data
 
